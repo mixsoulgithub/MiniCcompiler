@@ -76,6 +76,7 @@ static ASTnode* new_node(Token* tok, ASTnode *left, ASTnode *right){
 static ASTnode* expr(Token **tok_addr);
 static ASTnode* mul(Token **tok_addr);
 static ASTnode* primary(Token **tok_addr);
+static ASTnode* unary(Token **tok_addr);
 //tok is the first token of the expression.
 
 static ASTnode* expr(Token **tok_addr){
@@ -94,31 +95,50 @@ static ASTnode* expr(Token **tok_addr){
     return node;
 }
 
-//mul = primary ("*" primary | "/" primary)*
+//mul = unary ("*" unary | "/" unary)*
 static ASTnode* mul(Token **tok_addr){
     // printf("mul invoked\n");
-    ASTnode *node = primary(tok_addr);
+    ASTnode *node = unary(tok_addr);
     Token *tok= *tok_addr;
     while(tok->kind == TK_PUNCT && (*tok->loc == '*' || *tok->loc == '/')){
         Token *op = tok;
         tok = tok->next;
         *tok_addr=tok;
-        ASTnode *rhs = primary(tok_addr);
+        ASTnode *rhs = unary(tok_addr);
         tok= *tok_addr;
         node = new_node(op, node, rhs);
     }
     return node;
 }
 
+//unary = ("+"|"-") unary
+//      | primary
+static ASTnode* unary(Token **tok_addr){
+    Token* tok = *tok_addr;
+    if(*tok->loc=='+'){
+        *tok_addr=tok->next;
+        ASTnode *node = unary(tok_addr);
+        tok=*tok_addr;
+        return node;
+    }
+    if(*tok->loc=='-'){
+        *tok_addr=tok->next;
+        ASTnode *node =new_node(tok, NULL, unary(tok_addr));
+        tok=*tok_addr;
+        return node;
+    }
+    return primary(tok_addr);
+}
+
+
 //primary = num | "(" expr ")"  
 static ASTnode* primary(Token **tok_addr){
-    // printf("primary invoked\n");
+
     Token *tok = *tok_addr;
     if(tok->kind == TK_NUM){
         ASTnode *node = new_node(tok, NULL, NULL);
         tok = tok->next;
         *tok_addr = tok;
-        // printf("tok accessed\n");
         return node;
     }
     if(tok->kind == TK_PUNCT && *tok->loc == '('){
@@ -135,7 +155,7 @@ static ASTnode* primary(Token **tok_addr){
         }
         return node;
     }
-    fprintf(stderr, "unexpected token\n");
+    fprintf(stderr, "unexpected token %s\n", tok->loc);
     exit(1);
 }
 
@@ -146,6 +166,15 @@ static ASTnode *ASTgen(Token *tok){
 static void codeGen(ASTnode *node){
     if(node->tok->kind == TK_NUM && node->left == NULL && node->right == NULL){
         printf("  mov $%d, %%rax\n", node->tok->val);
+        return;
+    }
+    if(node->tok->kind == TK_PUNCT && *node->tok->loc == '-'&& node->left == NULL){
+        codeGen(node->right);
+        printf("  neg %%rax\n");
+        return;
+    }
+    if(node->tok->kind == TK_PUNCT && *node->tok->loc == '+'&& node->left == NULL){
+        codeGen(node->right);
         return;
     }
     codeGen(node->right);

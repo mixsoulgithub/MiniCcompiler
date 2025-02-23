@@ -17,7 +17,7 @@ assert(){
     fi
 }
 
-# assert 42 "43-1"
+assert 42 "43-1"
 assert 0 "12-3-5-4" #left-assoc
 assert 0 "  12-3- 5- 4 " # space
 assert 12 "3*4" #mul
@@ -25,5 +25,9 @@ assert 1 "3/2" #div
 assert 2 "3-(2- 1)" #paren
 assert 5 "1+2*3-4/2" #priority
 assert 4 "((1-1+3)/(2-1)-3)*2+4" #complex
+assert 2 "+2" #unary
+assert 3 "--+3"
+assert 6 "3++3"
+assert 1 "3+(-2)" 
 
 echo OK
