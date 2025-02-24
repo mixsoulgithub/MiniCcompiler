@@ -10,10 +10,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "no input\n");
         return 1;
     }
-    printf("  .globl main\n");
-    printf("main:\n");
     ASTnode *node = ASTgen(tok);
     codeGen(node);
-    printf("  ret\n");
     return 0;
 }
