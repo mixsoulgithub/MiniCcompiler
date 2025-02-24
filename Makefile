@@ -1,5 +1,10 @@
-miniCcompiler:main.c
-	gcc -o $@ $<
+SRC = $(wildcard *.c)
+OBJ = $(SRC:.c=.o)
+
+miniCcompiler:$(SRC)
+	gcc -o $@ $^
+
+$(SRC):mini.h
 
 test: miniCcompiler
 	./test.sh
