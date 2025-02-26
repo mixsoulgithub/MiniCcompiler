@@ -1,13 +1,18 @@
 #include "mini.h"
 static void gen_addr(ASTnode *node){
     if(node->kind == ND_VAR){
-        int offset = (node->name - 'a') * 8;
-        printf("  lea %d(%%rbp), %%rax\n", -offset);//now rax is the address of the variable.
+        printf("  lea %d(%%rbp), %%rax\n", -node->var->offset);
+        //now rax is the address of the variable.
     }else{
         fprintf(stderr,"invalid node kind in gen_addr\n");
         return;
     }
     return;
+}
+
+//align(5,8)=8, align(8,8)=8, align(9,8)=16. to align memory address.
+static int align(int n, int align){
+    return (n+align-1)/align * align;
 }
 
 static void codeGen_main(ASTnode *node){
@@ -94,7 +99,9 @@ void codeGen(ASTnode *node){
     printf("main:\n");
     printf("  push %%rbp\n");//save the base pointer.
     printf("  mov %%rsp, %%rbp\n");//set the base pointer.
-    printf("  sub $208, %%rsp\n");//allocate 26*8 bytes for 26 variables.
+    if(locals){
+        printf("  sub $%d, %%rsp\n",align(locals->offset, 16));
+    }
     for(;node;node=node->next){
         codeGen_main(node);
     }

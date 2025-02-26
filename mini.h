@@ -39,15 +39,24 @@ struct Token {
     int len;
 };
 
+typedef struct LocalVar LocalVar;
+struct LocalVar {
+    char *name;
+    LocalVar *next;
+    int offset;
+};
+
 typedef struct ASTnode ASTnode;
 struct ASTnode {
     ASTnode *next;
     NodeKind kind;
     int val;
-    char name;
+    LocalVar *var;
     ASTnode *left;
     ASTnode *right;
 };
+
+extern LocalVar *locals;
 
 Token* Tokenlize(char *p);
 ASTnode* ASTgen(Token *tok);
