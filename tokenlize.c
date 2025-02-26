@@ -1,5 +1,19 @@
 #include "mini.h"
 
+static int legal_var_name1(char c){
+    if('a'<=c&&c<='z'||'A'<=c&&c<='Z'||c=='_'){
+        return 1;
+    }
+    return 0;
+}
+
+static int legal_var_name2(char c){
+    if('a'<=c&&c<='z'||'A'<=c&&c<='Z'||c=='_'||'0'<=c&&c<='9'){
+        return 1;
+    }
+    return 0;
+}
+
 //Tokenlize the input string p and return the first token.
 Token* Tokenlize(char *p){
     Token head = {};
@@ -33,12 +47,15 @@ Token* Tokenlize(char *p){
             }
             continue;
         }
-        if('a'<=*p&&*p<='z'){
+        if(legal_var_name1(*p)){
+            char *q = p;
+            while(legal_var_name2(*p)){
+                p++;
+            }
             cur = cur->next = calloc(1, sizeof(Token));
             cur->kind = TK_ID;
-            cur->loc = p;
-            cur->len = 1;
-            p++;
+            cur->loc = q;
+            cur->len = p-q;
             continue;
         }
         if (isdigit(*p)) {//only one digit.

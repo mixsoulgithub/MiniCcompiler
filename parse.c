@@ -1,5 +1,16 @@
 #include "mini.h"
 
+LocalVar *locals;
+
+LocalVar *find_lvar(char *name, int len){
+    for(LocalVar *var = locals; var; var = var->next){
+        if(strlen(var->name) == len && !memcmp(var->name, name, len)){
+            return var;
+        }
+    }
+    return NULL;
+}
+
 static int equal(Token *tok, char *node_tok){
     return strlen(node_tok) == tok->len && !memcmp(tok->loc, node_tok, tok->len);
 }
@@ -19,9 +30,21 @@ static ASTnode* new_numnode(int num, ASTnode *left, ASTnode *right){
     return node;
 }//many number nodes are created, it's a waste to use "if" to distinguish them in new_node function.
 
-static ASTnode* new_varnode(char name, ASTnode *left, ASTnode *right){
+static ASTnode* new_lvarnode(char* name,int len, ASTnode *left, ASTnode *right){
     ASTnode *node = new_node(ND_VAR, left, right);
-    node->name=name;
+
+    LocalVar *var=find_lvar(name, len);
+    if(var){
+        node->var=var;
+        return node;
+    }
+    //head insert makes earlier defined variable have smaller offset and closer to rbp.
+    var = calloc(1, sizeof(LocalVar));
+    var->name = strndup(name, len);//strndup is not standard, but it's in glibc,'\0' is included automatically.
+    var->next = locals;
+    var->offset = locals ? (locals->offset) + 8 : 8; 
+    locals = var;
+    node->var=var;
     return node;
 }
 
@@ -213,7 +236,7 @@ static ASTnode* primary(Token **tok_addr){
         return node;
     }
     if(tok->kind == TK_ID){
-        ASTnode *node = new_varnode(*tok->loc, NULL, NULL);
+        ASTnode *node = new_lvarnode(tok->loc,tok->len, NULL, NULL);
         tok = tok->next;
         *tok_addr = tok;
         return node;
