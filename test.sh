@@ -57,7 +57,13 @@ assert 8 'a=3; z=5; a+z;'
 assert 6 'a=b=3; a+b;'
 
 assert 3 'ab=3; ab;'
-assert 8 '_a=3; z1=5; _a+z1;'
+assert 8 '_agoodname=3; z1=5; _agoodname+z1;'
 assert 6 'a1=b1=3; a1+b1;'
 
+assert 3 'foo=3; return foo;'
+assert 8 'foo123=3; bar=5; return foo123+bar;'
+
+assert 1 'return 1; 2; 3;'
+assert 2 '1; return 2; 3;'
+assert 3 '1; 2; return 3;'
 echo OK

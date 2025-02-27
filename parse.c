@@ -11,8 +11,18 @@ LocalVar *find_lvar(char *name, int len){
     return NULL;
 }
 
-static int equal(Token *tok, char *node_tok){
-    return strlen(node_tok) == tok->len && !memcmp(tok->loc, node_tok, tok->len);
+int equal(Token *tok, char *str){
+    return strlen(str) == tok->len && !memcmp(tok->loc, str, tok->len);
+}
+
+void skip(Token **tok_addr, char *op){
+    Token *tok = *tok_addr;
+    if(equal(tok, op)){
+        *tok_addr = tok->next;
+        return;
+    }
+    fprintf(stderr, "unexpected token %s\n", tok->loc);
+    exit(1);
 }
 
 static ASTnode* new_node(NodeKind kind, ASTnode *left, ASTnode *right){
@@ -71,23 +81,30 @@ static ASTnode* expr(Token **tok_addr){
     return head.next;//struct is different from pointer to struct.
 }
 
-//sentence = assgin ";" | ";"
+//sentence = ";" | "return" assgin ";"| assgin ";" 
+//reconginze keyword and terminal symbol first.
 static ASTnode* sentence(Token **tok_addr){
     Token *tok = *tok_addr;
+
     if(tok->kind == TK_PUNCT && *tok->loc == ';'){
         tok = tok->next;
         *tok_addr = tok;
         return new_node(ND_EMPTY, NULL, NULL);
     }
-    ASTnode *node = assign(tok_addr);
-    tok = *tok_addr;
-    if(tok->kind == TK_PUNCT && *tok->loc == ';'){
-        tok = tok->next;
-        *tok_addr = tok;
-        return node;
+
+    if(tok->kind == TK_ID){
+        if(equal(tok, "return")){
+            tok = tok->next;
+            *tok_addr = tok;
+            ASTnode *node = new_node(ND_RETURN, assign(tok_addr), NULL);
+            skip(tok_addr, ";");
+            return node;
+        }
     }
-    fprintf(stderr, "unexpected token when need ';'\n");
-    exit(1);
+
+    ASTnode *node = assign(tok_addr);
+    skip(tok_addr, ";");
+    return node;
 }
 
 //assgin = equaility ("=" assgin)?
@@ -213,7 +230,6 @@ static ASTnode* unary(Token **tok_addr){
 
 //primary = num | "(" equiality ")" | ident
 static ASTnode* primary(Token **tok_addr){
-
     Token *tok = *tok_addr;
     if(tok->kind == TK_NUM){
         ASTnode *node = new_numnode(tok->val, NULL, NULL);
@@ -221,6 +237,7 @@ static ASTnode* primary(Token **tok_addr){
         *tok_addr = tok;
         return node;
     }
+
     if(tok->kind == TK_PUNCT && *tok->loc == '('){
         tok = tok->next;
         *tok_addr = tok;
@@ -235,6 +252,7 @@ static ASTnode* primary(Token **tok_addr){
         }
         return node;
     }
+
     if(tok->kind == TK_ID){
         ASTnode *node = new_lvarnode(tok->loc,tok->len, NULL, NULL);
         tok = tok->next;

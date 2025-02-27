@@ -14,6 +14,28 @@ static int legal_var_name2(char c){
     return 0;
 }
 
+// static int isKeyword(Token *tok){
+//     if(tok->kind == TK_ID){
+//         if(equal(tok, "if")){
+//             return 1;
+//         }
+//         if(equal(tok, "else")){
+//             return 1;
+//         }
+//         if(equal(tok, "while")){
+//             return 1;
+//         }
+//         if(equal(tok, "for")){
+//             return 1;
+//         }
+//         if(equal(tok, "return")){
+//             tok->kind = TK_KEYWORD;
+//             return 1;
+//         }
+//     }
+//     return 0;
+// }
+
 //Tokenlize the input string p and return the first token.
 Token* Tokenlize(char *p){
     Token head = {};

@@ -87,6 +87,10 @@ static void codeGen_main(ASTnode *node){
         gen_addr(node);
         printf("  mov (%%rax), %%rax\n");//get value from the address.
         break;
+    case ND_RETURN:
+        codeGen_main(node->left);
+        printf("  jmp .L.return\n");
+        break;
     default:
         fprintf(stderr,"invalid node kind in codeGen_main\n");
         return;
@@ -105,6 +109,7 @@ void codeGen(ASTnode *node){
     for(;node;node=node->next){
         codeGen_main(node);
     }
+    printf(".L.return:\n");
     printf("  mov %%rbp, %%rsp\n");//restore the stack pointer.
     printf("  pop %%rbp\n");//restore the base pointer.
     printf("  ret\n");

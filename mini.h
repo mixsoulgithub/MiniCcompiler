@@ -9,6 +9,7 @@
 typedef enum {
     TK_PUNCT, // Punctuators
     TK_ID,    //identifiers
+    TK_KEYWORD, //keywords
     TK_NUM,   // Numeric literals
     TK_EOF,   // End-of-file markers
   } TokenKind;
@@ -26,6 +27,7 @@ typedef enum {
     ND_SEMI, // ;
     ND_EMPTY, //empty sentence
     ND_ASSIGN, // =
+    ND_RETURN, // return
     ND_VAR, // Variable
     ND_NUM, // Integer
   } NodeKind;
@@ -57,6 +59,7 @@ struct ASTnode {
 };
 
 extern LocalVar *locals;
+extern int equal(Token *tok, char *op);
 
 Token* Tokenlize(char *p);
 ASTnode* ASTgen(Token *tok);
