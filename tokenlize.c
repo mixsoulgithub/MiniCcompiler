@@ -45,7 +45,7 @@ Token* Tokenlize(char *p){
             p++;
             continue;
         }
-        if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')'|| *p == ';') {
+        if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')'|| *p == ';'|| *p == '{'|| *p == '}') {
             cur = cur->next = calloc(1, sizeof(Token));
             cur->kind = TK_PUNCT;
             cur->loc = p;
