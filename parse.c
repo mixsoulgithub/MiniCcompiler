@@ -58,7 +58,14 @@ static ASTnode* new_lvarnode(char* name,int len, ASTnode *left, ASTnode *right){
     return node;
 }
 
+static ASTnode* new_blocknode(ASTnode *body){
+    ASTnode *node = new_node(ND_BLOCK, NULL, NULL);
+    node->body = body;
+    return node;
+}
+
 static ASTnode* expr(Token **tok_addr);
+static ASTnode* block(Token **tok_addr);
 static ASTnode* sentence(Token **tok_addr);
 static ASTnode* assign(Token **tok_addr);
 static ASTnode* equaility(Token **tok_addr);
@@ -69,19 +76,29 @@ static ASTnode* primary(Token **tok_addr);
 static ASTnode* unary(Token **tok_addr);
 //tok is the first token of the expression.
 
-//expr = sentence*
+//expr = block
 static ASTnode* expr(Token **tok_addr){
-    Token *tok = *tok_addr;
-    ASTnode head = {};
-    ASTnode *node = &head;
-    while(tok->kind != TK_EOF){
-        node =node->next= sentence(tok_addr);
-        tok = *tok_addr;
-    }
-    return head.next;//struct is different from pointer to struct.
+    return block(tok_addr);
 }
 
-//sentence = ";" | "return" assgin ";"| assgin ";" 
+//block= "{" sentence* "}"
+static ASTnode* block(Token **tok_addr){
+    Token *tok = *tok_addr;
+    skip(tok_addr, "{");
+
+    ASTnode head = {};
+    ASTnode *node = &head;
+    while(!(tok->kind == TK_PUNCT && *tok->loc == '}')){//lack good error message if  '}' is missing.
+        node = node->next = sentence(tok_addr);
+        tok = *tok_addr;
+    }
+    tok = tok->next;
+    *tok_addr = tok;
+    return new_blocknode(head.next);
+}
+
+
+//sentence = ";" | "return" assgin ";"| assgin ";" | block 
 //reconginze keyword and terminal symbol first.
 static ASTnode* sentence(Token **tok_addr){
     Token *tok = *tok_addr;
@@ -90,6 +107,10 @@ static ASTnode* sentence(Token **tok_addr){
         tok = tok->next;
         *tok_addr = tok;
         return new_node(ND_EMPTY, NULL, NULL);
+    }
+
+    if(tok->kind == TK_PUNCT && *tok->loc == '{'){
+        return block(tok_addr);
     }
 
     if(tok->kind == TK_ID){

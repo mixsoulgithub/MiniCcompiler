@@ -91,6 +91,11 @@ static void codeGen_main(ASTnode *node){
         codeGen_main(node->left);
         printf("  jmp .L.return\n");
         break;
+    case ND_BLOCK:
+        for(ASTnode *n=node->body;n;n=n->next){
+            codeGen_main(n);
+        }
+        break;
     default:
         fprintf(stderr,"invalid node kind in codeGen_main\n");
         return;
