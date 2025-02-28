@@ -30,6 +30,7 @@ typedef enum {
     ND_RETURN, // return
     ND_BLOCK, // block
     ND_IF, // if
+    ND_FOR, // for
     ND_VAR, // Variable
     ND_NUM, // Integer
   } NodeKind;
@@ -59,6 +60,7 @@ struct ASTnode {
     ASTnode *body;//if kind is ND_BLOCK, body is the block.
 
     ASTnode *cond, *then, *els;
+    ASTnode *init, *inc;
 
     ASTnode *left;
     ASTnode *right;

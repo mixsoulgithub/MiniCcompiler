@@ -71,6 +71,14 @@ static ASTnode* new_ifnode(ASTnode *cond, ASTnode *then, ASTnode *els){
     node->els = els;
     return node;
 }
+static ASTnode* new_fornode(ASTnode *init, ASTnode *cond, ASTnode *inc, ASTnode *body){
+    ASTnode *node = new_node(ND_FOR, NULL, NULL);
+    node->init = init;
+    node->cond = cond;
+    node->inc = inc;
+    node->body = body;
+    return node;
+}
 
 static ASTnode* expr(Token **tok_addr);
 static ASTnode* block(Token **tok_addr);
@@ -108,6 +116,7 @@ static ASTnode* block(Token **tok_addr){
 
 //sentence = ";" | "return" assgin ";"| assgin ";" | block 
 //          | "if" "(" equaility ")" sentence ("else" sentence)?
+//          | "for" "(" assgin ";" equaility ";" assgin ")" sentence
 //reconginze keyword and terminal symbol first.
 static ASTnode* sentence(Token **tok_addr){
     Token *tok = *tok_addr;
@@ -145,6 +154,35 @@ static ASTnode* sentence(Token **tok_addr){
                 return new_ifnode(cond, then, els);
             }
             return new_ifnode(cond, then, NULL);
+        }
+        if(equal(tok, "for")){
+            tok = tok->next;
+            *tok_addr = tok;
+            ASTnode *init, *cond, *inc;
+            init = cond = inc = NULL;
+            skip(tok_addr, "(");
+            tok = *tok_addr;
+
+            if(!equal(tok, ";")){
+                init = assign(tok_addr);//will be NULL if there is no initialization.
+            }
+            skip(tok_addr, ";");
+            tok = *tok_addr;
+
+            if(!equal(tok, ";")){
+                cond = equaility(tok_addr);
+            }
+            skip(tok_addr, ";");
+            tok = *tok_addr;
+
+            if(!equal(tok, ")")){
+                inc = assign(tok_addr);
+            }
+            skip(tok_addr, ")");
+            tok = *tok_addr;
+
+            ASTnode *body = sentence(tok_addr);
+            return new_fornode(init, cond, inc, body);
         }
     }
 
