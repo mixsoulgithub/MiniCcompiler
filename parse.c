@@ -64,6 +64,14 @@ static ASTnode* new_blocknode(ASTnode *body){
     return node;
 }
 
+static ASTnode* new_ifnode(ASTnode *cond, ASTnode *then, ASTnode *els){
+    ASTnode *node = new_node(ND_IF, NULL, NULL);
+    node->cond = cond;
+    node->then = then;
+    node->els = els;
+    return node;
+}
+
 static ASTnode* expr(Token **tok_addr);
 static ASTnode* block(Token **tok_addr);
 static ASTnode* sentence(Token **tok_addr);
@@ -99,6 +107,7 @@ static ASTnode* block(Token **tok_addr){
 
 
 //sentence = ";" | "return" assgin ";"| assgin ";" | block 
+//          | "if" "(" equaility ")" sentence ("else" sentence)?
 //reconginze keyword and terminal symbol first.
 static ASTnode* sentence(Token **tok_addr){
     Token *tok = *tok_addr;
@@ -120,6 +129,22 @@ static ASTnode* sentence(Token **tok_addr){
             ASTnode *node = new_node(ND_RETURN, assign(tok_addr), NULL);
             skip(tok_addr, ";");
             return node;
+        }
+        if(equal(tok, "if")){
+            tok = tok->next;
+            *tok_addr = tok;
+            skip(tok_addr, "(");
+            ASTnode *cond = equaility(tok_addr);
+            skip(tok_addr, ")");
+            ASTnode *then = sentence(tok_addr);
+            tok = *tok_addr;
+            if(equal(tok, "else")){
+                tok = tok->next;
+                *tok_addr = tok;
+                ASTnode *els = sentence(tok_addr);
+                return new_ifnode(cond, then, els);
+            }
+            return new_ifnode(cond, then, NULL);
         }
     }
 

@@ -29,6 +29,7 @@ typedef enum {
     ND_ASSIGN, // =
     ND_RETURN, // return
     ND_BLOCK, // block
+    ND_IF, // if
     ND_VAR, // Variable
     ND_NUM, // Integer
   } NodeKind;
@@ -56,6 +57,9 @@ struct ASTnode {
     int val;
     LocalVar *var;//if kind is ND_VAR, var is the variable.
     ASTnode *body;//if kind is ND_BLOCK, body is the block.
+
+    ASTnode *cond, *then, *els;
+
     ASTnode *left;
     ASTnode *right;
 };

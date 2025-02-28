@@ -10,6 +10,8 @@ static void gen_addr(ASTnode *node){
     return;
 }
 
+int ifcount=0;
+
 //align(5,8)=8, align(8,8)=8, align(9,8)=16. to align memory address.
 static int align(int n, int align){
     return (n+align-1)/align * align;
@@ -95,6 +97,24 @@ static void codeGen_main(ASTnode *node){
         for(ASTnode *n=node->body;n;n=n->next){
             codeGen_main(n);
         }
+        break;
+    case ND_IF:
+        codeGen_main(node->cond);
+        printf("  cmp $0, %%rax\n");
+        if(node->els){
+            printf("  je .L.else%d\n",ifcount);//rax is 0, jump to else.
+            codeGen_main(node->then);
+            printf("  jmp .L.end%d\n",ifcount);
+
+            printf(".L.else%d:\n",ifcount);
+            codeGen_main(node->els);
+            printf(".L.end%d:\n",ifcount);
+        }else{
+            printf("  je .L.end%d\n",ifcount);
+            codeGen_main(node->then);
+            printf(".L.end%d:\n",ifcount);
+        }
+        ifcount++;
         break;
     default:
         fprintf(stderr,"invalid node kind in codeGen_main\n");

@@ -61,9 +61,18 @@ assert 8 '{_agoodname=3; z1=5; _agoodname+z1;}'
 assert 6 '{a1=b1=3; a1+b1;}'
 
 assert 3 '{foo=3; return foo;}'
-assert 8 '{foo123=3; bar=5;{;}; return foo123+bar;}'
+assert 8 '{foo123=3; bar=5;{;;}; return foo123+bar;}'
 
 assert 1 '{{return 1;} 2; 3;}'
 assert 2 '{1; return 2; 3;}'
 assert 3 '{1; 2; return 3;}'
+
+assert 3 '{ if (0) return 2; return 3; }'
+assert 3 '{ if (1-1==1) return 2; return 3; }'
+assert 2 '{ if (1) return 2; return 3; }'
+assert 2 '{ if (2-1) return 2; return 3; }'
+assert 4 '{ if (0) { 1; 2; return 3; } else { return 4; } }'
+assert 3 '{ if (1) { 1; 2; return 3; } else { return 4; } }'
+assert 2 '{ if (1) { a=1; } else { a=2; }; if (a==1) {a=2;}; return a; }'
+
 echo OK
