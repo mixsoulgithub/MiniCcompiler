@@ -10,7 +10,7 @@ static void gen_addr(ASTnode *node){
     return;
 }
 
-int ifcount=0;
+int count=0;
 
 //align(5,8)=8, align(8,8)=8, align(9,8)=16. to align memory address.
 static int align(int n, int align){
@@ -102,19 +102,37 @@ static void codeGen_main(ASTnode *node){
         codeGen_main(node->cond);
         printf("  cmp $0, %%rax\n");
         if(node->els){
-            printf("  je .L.else%d\n",ifcount);//rax is 0, jump to else.
+            printf("  je .L.else%d\n",count);//rax is 0, jump to else.
             codeGen_main(node->then);
-            printf("  jmp .L.end%d\n",ifcount);
+            printf("  jmp .L.end%d\n",count);
 
-            printf(".L.else%d:\n",ifcount);
+            printf(".L.else%d:\n",count);
             codeGen_main(node->els);
-            printf(".L.end%d:\n",ifcount);
+            printf(".L.end%d:\n",count);
         }else{
-            printf("  je .L.end%d\n",ifcount);
+            printf("  je .L.end%d\n",count);
             codeGen_main(node->then);
-            printf(".L.end%d:\n",ifcount);
+            printf(".L.end%d:\n",count);
         }
-        ifcount++;
+        count++;
+        break;
+    case ND_FOR:
+        if(node->init){
+            codeGen_main(node->init);
+        }
+        printf(".L.begin%d:\n",count);
+        if(node->cond){
+            codeGen_main(node->cond);
+            printf("  cmp $0, %%rax\n");
+            printf("  je .L.end%d\n",count);
+        }
+        codeGen_main(node->body);
+        if(node->inc){
+            codeGen_main(node->inc);
+        }
+        printf("  jmp .L.begin%d\n",count);
+        printf(".L.end%d:\n",count);
+        count++;
         break;
     default:
         fprintf(stderr,"invalid node kind in codeGen_main\n");
