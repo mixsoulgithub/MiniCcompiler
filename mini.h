@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -20,6 +21,8 @@ typedef enum {
     ND_MUL, // *
     ND_DIV, // /
     ND_NEG, // unary -
+    ND_ADDR, // &
+    ND_DEREF, // *
     ND_EQ,  // ==
     ND_NE,  // !=
     ND_LT,  // <
@@ -31,9 +34,22 @@ typedef enum {
     ND_BLOCK, // block
     ND_IF, // if
     ND_FOR, // for
+    ND_WHILE,//while
     ND_VAR, // Variable
     ND_NUM, // Integer
   } NodeKind;
+
+typedef enum {
+  TY_INT,
+  TY_POINTER,
+  TY_ALL,
+} TypeKind;
+
+typedef struct Type Type;
+struct Type {
+  TypeKind tykind;
+  Type *base;
+};
 
 typedef struct Token Token;
 struct Token {
@@ -64,10 +80,14 @@ struct ASTnode {
 
     ASTnode *left;
     ASTnode *right;
+    Type *type;
 };
 
 extern LocalVar *locals;
 extern int equal(Token *tok, char *op);
+extern Type* ty_int;
+extern Type* point_to(Type *ty);
+extern Type* getNodeType(ASTnode* node);
 
 Token* Tokenlize(char *p);
 ASTnode* ASTgen(Token *tok);

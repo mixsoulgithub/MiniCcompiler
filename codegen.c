@@ -1,36 +1,31 @@
 #include "mini.h"
-static void gen_addr(ASTnode *node){
-    if(node->kind == ND_VAR){
-        printf("  lea %d(%%rbp), %%rax\n", -node->var->offset);
-        //now rax is the address of the variable.
-    }else{
-        fprintf(stderr,"invalid node kind in gen_addr\n");
-        return;
-    }
-    return;
-}
 
 int count=0;
+static void codeGen_main(ASTnode *node);
 
-//align(5,8)=8, align(8,8)=8, align(9,8)=16. to align memory address.
+//align memory address up to 8*k .
 static int align(int n, int align){
     return (n+align-1)/align * align;
 }
 
+static void gen_addr(ASTnode *node){
+    switch (node->kind)
+    {
+    case ND_VAR:
+        printf("  lea %d(%%rbp), %%rax\n", -node->var->offset);
+        break;
+    case ND_DEREF:
+        codeGen_main(node->right);
+        break;
+    default:
+        fprintf(stderr,"invalid node kind in gen_addr\n");
+        break;
+    }
+    return;
+}
+
 static void codeGen_main(ASTnode *node){
-    // if(node->tok->kind == TK_NUM && node->left == NULL && node->right == NULL){
-    //     printf("  mov $%d, %%rax\n", node->tok->val);
-    //     return;
-    // }
-    // if(node->tok->kind == TK_PUNCT && *node->tok->loc == '-'&& node->left == NULL){
-    //     codeGen_main(node->right);
-    //     printf("  neg %%rax\n");
-    //     return;
-    // }
-    // if(node->tok->kind == TK_PUNCT && *node->tok->loc == '+'&& node->left == NULL){
-    //     codeGen_main(node->right);
-    //     return;
-    // }
+
     if(node->right!=NULL&&node->left!=NULL){//handle normal codition together in case stack imbalance.
         codeGen_main(node->right);
         printf("  push %%rax\n");
@@ -58,6 +53,13 @@ static void codeGen_main(ASTnode *node){
     case ND_NEG:
         codeGen_main(node->right);
         printf("  neg %%rax\n");
+        break;
+    case ND_ADDR:
+        gen_addr(node->right);
+        break;
+    case ND_DEREF:
+        codeGen_main(node->right);
+        printf("  mov (%%rax), %%rax\n");
         break;
     case ND_EQ:
     case ND_NE:
@@ -90,7 +92,9 @@ static void codeGen_main(ASTnode *node){
         printf("  mov (%%rax), %%rax\n");//get value from the address.
         break;
     case ND_RETURN:
-        codeGen_main(node->left);
+        if(node->left!=NULL){
+            codeGen_main(node->left);
+        }
         printf("  jmp .L.return\n");
         break;
     case ND_BLOCK:

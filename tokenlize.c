@@ -45,13 +45,27 @@ Token* Tokenlize(char *p){
             p++;
             continue;
         }
-        if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')'|| *p == ';'|| *p == '{'|| *p == '}') {
+        switch (*p)
+        {
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+        case '(':
+        case ')':
+        case ';':
+        case '{':
+        case '}':
+        case '&':
             cur = cur->next = calloc(1, sizeof(Token));
             cur->kind = TK_PUNCT;
             cur->loc = p;
             cur->len = 1;
             p++;
             continue;
+            break;
+        default:
+            break;
         }
         if(*p== '='||*p == '<'||*p == '>'||*p == '!'){
             if(*(p+1) == '='){

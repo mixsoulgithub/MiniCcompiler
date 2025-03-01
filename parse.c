@@ -2,6 +2,8 @@
 
 LocalVar *locals;
 
+static ASTnode* new_numnode(int num, ASTnode *left, ASTnode *right);
+
 LocalVar *find_lvar(char *name, int len){
     for(LocalVar *var = locals; var; var = var->next){
         if(strlen(var->name) == len && !memcmp(var->name, name, len)){
@@ -15,13 +17,14 @@ int equal(Token *tok, char *str){
     return strlen(str) == tok->len && !memcmp(tok->loc, str, tok->len);
 }
 
+//skip string "op".
 void skip(Token **tok_addr, char *op){
     Token *tok = *tok_addr;
     if(equal(tok, op)){
         *tok_addr = tok->next;
         return;
     }
-    fprintf(stderr, "unexpected token %s\n", tok->loc);
+    fprintf(stderr, "unexpected token %s in <skip>\n", tok->loc);
     exit(1);
 }
 
@@ -32,6 +35,50 @@ static ASTnode* new_node(NodeKind kind, ASTnode *left, ASTnode *right){
     node->left = left;
     node->right = right;
     return node;
+}
+
+//p+1 means different when p is int or pointer.
+static ASTnode* new_addnode(ASTnode *left, ASTnode* right){
+    //calculate type of node one time, or at real time? don't worry, if subnode has they type, <calcu_type> will
+    //ensure avoidance of useless recursive by checking if node is null or already has type.
+    Type* ltype=getNodeType(left);
+    Type* rtype=getNodeType(right);
+    if(ltype->tykind==TY_INT&&rtype->tykind==TY_INT){
+        return new_node(ND_ADD,left,right);
+    }else if(ltype->tykind==TY_POINTER && rtype->tykind==TY_INT){
+        return new_node(ND_ADD,left, new_node(ND_MUL,right,new_numnode(8,NULL,NULL)));//p+1 is address +8 acctually.
+    }else if(ltype->tykind==TY_INT&&rtype->tykind==TY_POINTER){
+        //exchage to ensure father node to be pointer.because add inherit left node's type.
+        return new_node(ND_ADD,new_node(ND_MUL,left,new_numnode(8,NULL,NULL)),right);
+    }
+    fprintf(stderr,"<%s>: only support pointer+int, int+int, int+pointer",__func__);
+}
+static ASTnode* new_subnode(ASTnode *left, ASTnode* right){
+
+    Type* ltype=getNodeType(left);
+    Type* rtype=getNodeType(right);
+    if(ltype->tykind==TY_INT&&rtype->tykind==TY_INT){
+        return new_node(ND_SUB,left,right);
+    }else if(ltype->tykind==TY_POINTER && rtype->tykind==TY_INT){
+        return new_node(ND_SUB,left, new_node(ND_MUL,right,new_numnode(8,NULL,NULL)));//p+1 is address +8 acctually.
+    }else if(ltype->tykind==TY_POINTER&&rtype->tykind==TY_POINTER){
+        Type*ltmp=ltype->base;
+        Type*rtmp=rtype->base;
+        while(ltmp->tykind==TY_POINTER&&rtmp->tykind==TY_POINTER){
+            ltmp=ltmp->base;
+            rtmp=rtmp->base;
+        }
+        if(ltmp->tykind==rtmp->tykind){
+            ASTnode *tmp=new_node(ND_DIV,new_node(ND_SUB,left,right),new_numnode(8,NULL,NULL));
+            // ptr-ptr returns a int type num. but what for subnode's type? 
+            //we don't care until use, just calcu_type at that time. 
+            tmp->type=ty_int;
+            return tmp;
+        }else{
+            fprintf(stderr,"<%s>:when pointer-pointer, pointers must at same kind and layer",__func__);
+        }
+    }
+    fprintf(stderr,"<%s>: only support pointer-int, int-int, pointer-pointer",__func__);
 }
 
 static ASTnode* new_numnode(int num, ASTnode *left, ASTnode *right){
@@ -84,7 +131,7 @@ static ASTnode* expr(Token **tok_addr);
 static ASTnode* block(Token **tok_addr);
 static ASTnode* sentence(Token **tok_addr);
 static ASTnode* assign(Token **tok_addr);
-static ASTnode* equaility(Token **tok_addr);
+static ASTnode* equation(Token **tok_addr);
 static ASTnode* relational(Token **tok_addr);
 static ASTnode* add(Token **tok_addr);
 static ASTnode* mul(Token **tok_addr);
@@ -114,9 +161,10 @@ static ASTnode* block(Token **tok_addr){
 }
 
 
-//sentence = ";" | "return" assgin ";"| assgin ";" | block 
-//          | "if" "(" equaility ")" sentence ("else" sentence)?
-//          | "for" "(" assgin ";" equaility ";" assgin ")" sentence
+//sentence = ";" | "return" ";" | "return" assgin ";"| assgin ";" | block 
+//          | "if" "(" equation ")" sentence ("else" sentence)?
+//          | "for" "(" assgin ";" equation ";" assgin ")" sentence
+//          | "while" "(" equation ")" sentence
 //reconginze keyword and terminal symbol first.
 static ASTnode* sentence(Token **tok_addr){
     Token *tok = *tok_addr;
@@ -133,8 +181,11 @@ static ASTnode* sentence(Token **tok_addr){
 
     if(tok->kind == TK_ID){
         if(equal(tok, "return")){
-            tok = tok->next;
-            *tok_addr = tok;
+            skip(tok_addr,"return");
+            // if(equal(*tok_addr,";")){
+            //     skip(tok_addr,";");
+            //     return new_node(ND_RETURN, NULL, NULL);
+            // }
             ASTnode *node = new_node(ND_RETURN, assign(tok_addr), NULL);
             skip(tok_addr, ";");
             return node;
@@ -143,7 +194,7 @@ static ASTnode* sentence(Token **tok_addr){
             tok = tok->next;
             *tok_addr = tok;
             skip(tok_addr, "(");
-            ASTnode *cond = equaility(tok_addr);
+            ASTnode *cond = equation(tok_addr);
             skip(tok_addr, ")");
             ASTnode *then = sentence(tok_addr);
             tok = *tok_addr;
@@ -170,7 +221,7 @@ static ASTnode* sentence(Token **tok_addr){
             tok = *tok_addr;
 
             if(!equal(tok, ";")){
-                cond = equaility(tok_addr);
+                cond = equation(tok_addr);
             }
             skip(tok_addr, ";");
             tok = *tok_addr;
@@ -184,6 +235,15 @@ static ASTnode* sentence(Token **tok_addr){
             ASTnode *body = sentence(tok_addr);
             return new_fornode(init, cond, inc, body);
         }
+        if(equal(tok, "while")){
+            tok = tok->next;
+            *tok_addr = tok;
+            skip(tok_addr, "(");
+            ASTnode *cond = equation(tok_addr);
+            skip(tok_addr, ")");
+            ASTnode *body = sentence(tok_addr);
+            return new_fornode(NULL, cond, NULL, body);
+        }
     }
 
     ASTnode *node = assign(tok_addr);
@@ -191,9 +251,9 @@ static ASTnode* sentence(Token **tok_addr){
     return node;
 }
 
-//assgin = equaility ("=" assgin)?
+//assgin = equation ("=" assgin)?
 static ASTnode* assign(Token **tok_addr){
-    ASTnode *node = equaility(tok_addr);
+    ASTnode *node = equation(tok_addr);
     Token *tok = *tok_addr;
     if(tok->kind == TK_PUNCT && *tok->loc == '='){
         tok = tok->next;
@@ -203,8 +263,8 @@ static ASTnode* assign(Token **tok_addr){
     return node;
 }
 
-//equiality = relational ("==" relational | "!=" relational)*
-static ASTnode* equaility(Token **tok_addr){
+//equation = relational ("==" relational | "!=" relational)*
+static ASTnode* equation(Token **tok_addr){
     ASTnode *node = relational(tok_addr);
     Token *tok= *tok_addr;
     while(tok->kind == TK_PUNCT && (equal(tok, "==") || equal(tok, "!="))){
@@ -262,9 +322,9 @@ static ASTnode* add(Token **tok_addr){
         tok= *tok_addr;
 
         if(*node_tok->loc == '+'){
-            node = new_node(ND_ADD, node, rhs);
+            node = new_addnode(node, rhs);
         }else{
-            node = new_node(ND_SUB, node, rhs);//in this layer, node becomes left, so left-associative is guaranteed.
+            node = new_subnode(node, rhs);//in this layer, node becomes left, so left-associative is guaranteed.
         }
     }
     return node;
@@ -275,24 +335,23 @@ static ASTnode* mul(Token **tok_addr){
     ASTnode *node = unary(tok_addr);
     Token *tok= *tok_addr;
 
-    while(tok->kind == TK_PUNCT && (*tok->loc == '*' || *tok->loc == '/')){
-        Token *node_tok = tok;
-        tok = tok->next;
-
-        *tok_addr=tok;
-        ASTnode *rhs = unary(tok_addr);
-        tok= *tok_addr;
-        
-        if(*node_tok->loc == '/'){
-            node = new_node(ND_DIV, node, rhs);
+    for(;;){
+        if(equal(tok,"/")){
+            skip(tok_addr,"/");
+            return new_node(ND_DIV, node, unary(tok_addr));
+        }else if(equal(tok,"*")){
+            skip(tok_addr,"*");
+            return new_node(ND_MUL, node, unary(tok_addr));
         }else{
-            node = new_node(ND_MUL, node, rhs);
+            // fprintf(stderr,"<mul> error: need / or * \n");
+            // exit(1);
+            break;
         }
     }
     return node;
 }
 
-//unary = ("+"|"-") unary
+//unary = ("+"|"-"|"*"|"&") unary
 //      | primary
 static ASTnode* unary(Token **tok_addr){
     Token* tok = *tok_addr;
@@ -305,6 +364,18 @@ static ASTnode* unary(Token **tok_addr){
     if(*tok->loc=='-'){
         *tok_addr=tok->next;
         ASTnode *node =new_node(ND_NEG, NULL, unary(tok_addr));
+        tok=*tok_addr;
+        return node;
+    }
+    if(*tok->loc=='&'){
+        *tok_addr=tok->next;
+        ASTnode *node =new_node(ND_ADDR, NULL, unary(tok_addr));
+        tok=*tok_addr;
+        return node;
+    }
+    if(*tok->loc=='*'){
+        *tok_addr=tok->next;
+        ASTnode *node =new_node(ND_DEREF, NULL, unary(tok_addr));
         tok=*tok_addr;
         return node;
     }
@@ -325,7 +396,7 @@ static ASTnode* primary(Token **tok_addr){
     if(tok->kind == TK_PUNCT && *tok->loc == '('){
         tok = tok->next;
         *tok_addr = tok;
-        ASTnode *node = equaility(tok_addr);
+        ASTnode *node = equation(tok_addr);
         tok = *tok_addr;
         if(!(tok->kind == TK_PUNCT && *tok->loc == ')')){
             fprintf(stderr, "missing ')'\n");
@@ -343,7 +414,7 @@ static ASTnode* primary(Token **tok_addr){
         *tok_addr = tok;
         return node;
     }
-    fprintf(stderr, "unexpected token %s\n", tok->loc);
+    fprintf(stderr, "<primary> unexpected token %s\n", tok->loc);
     exit(1);
 }
 
