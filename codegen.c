@@ -138,6 +138,11 @@ static void codeGen_main(ASTnode *node){
         printf(".L.end%d:\n",count);
         count++;
         break;
+    case ND_DEC:
+        for(ASTnode *n=node->body;n;n=n->next){
+            codeGen_main(n);
+        }
+        break;
     default:
         fprintf(stderr,"invalid node kind in codeGen_main\n");
         return;

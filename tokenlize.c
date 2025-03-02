@@ -13,28 +13,35 @@ static int legal_var_name2(char c){
     }
     return 0;
 }
+ 
+int isKeyword(Token *tok){
+    if(tok->kind == TK_ID){
+        return equal(tok, "if")     || equal(tok, "else")       || equal(tok, "while")
+            || equal(tok, "for")    || equal(tok, "return")     || equal(tok, "int");
+    }
+    return 0;
+}
 
-// static int isKeyword(Token *tok){
-//     if(tok->kind == TK_ID){
-//         if(equal(tok, "if")){
-//             return 1;
-//         }
-//         if(equal(tok, "else")){
-//             return 1;
-//         }
-//         if(equal(tok, "while")){
-//             return 1;
-//         }
-//         if(equal(tok, "for")){
-//             return 1;
-//         }
-//         if(equal(tok, "return")){
-//             tok->kind = TK_KEYWORD;
-//             return 1;
-//         }
-//     }
-//     return 0;
-// }
+int isBaseType(Token *tok){
+    if(tok->kind==TK_KEYWORD){
+        return equal(tok, "int") || equal(tok, "char");
+    }
+    return 0;
+}
+
+Type * getbasetype(Token *tok){
+    if(equal(tok, "int")){
+        return ty_int;
+    }
+    return NULL;
+}
+
+Type * matchBasicType(Token* tok){
+    if(equal(tok,"int")){
+        return ty_int; 
+    }
+    return NULL;
+}
 
 //Tokenlize the input string p and return the first token.
 Token* Tokenlize(char *p){
@@ -57,6 +64,7 @@ Token* Tokenlize(char *p){
         case '{':
         case '}':
         case '&':
+        case ',':
             cur = cur->next = calloc(1, sizeof(Token));
             cur->kind = TK_PUNCT;
             cur->loc = p;
@@ -101,11 +109,16 @@ Token* Tokenlize(char *p){
             cur->val = strtol(p, &p, 10);
             continue;
         }
-        fprintf(stderr, "unexpected character: '%c'\n", *p);
+        fprintf(stderr, "<%s>:unexpected character: '%c'\n",__func__ ,*p);
         exit(1);
     }
     cur = cur->next = calloc(1, sizeof(Token));
     cur->kind = TK_EOF;
     cur->loc = p;
+    for(Token* tmp=head.next;tmp->kind!=TK_EOF;tmp=tmp->next){
+        if(isKeyword(tmp)){
+            tmp->kind=TK_KEYWORD;
+        }
+    }
     return head.next;
 }

@@ -35,6 +35,7 @@ typedef enum {
     ND_IF, // if
     ND_FOR, // for
     ND_WHILE,//while
+    ND_DEC,//declare
     ND_VAR, // Variable
     ND_NUM, // Integer
   } NodeKind;
@@ -88,6 +89,8 @@ extern int equal(Token *tok, char *op);
 extern Type* ty_int;
 extern Type* point_to(Type *ty);
 extern Type* getNodeType(ASTnode* node);
+extern int isBaseType(Token *tok);
+extern Type* getbasetype(Token*tok);
 
 Token* Tokenlize(char *p);
 ASTnode* ASTgen(Token *tok);
