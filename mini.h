@@ -38,6 +38,7 @@ typedef enum {
     ND_DEC,//declare
     ND_VAR, // Variable
     ND_NUM, // Integer
+    ND_FUNCALL,//function call
   } NodeKind;
 
 typedef enum {
@@ -78,6 +79,7 @@ struct ASTnode {
 
     ASTnode *cond, *then, *els;
     ASTnode *init, *inc;
+    char *funcname;
 
     ASTnode *left;
     ASTnode *right;
