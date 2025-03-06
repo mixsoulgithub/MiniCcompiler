@@ -143,6 +143,10 @@ static void codeGen_main(ASTnode *node){
             codeGen_main(n);
         }
         break;
+    case ND_FUNCALL:
+        printf("  mov $0, %%rax\n");
+        printf("  call %s\n", node->funcname);
+        return;
     default:
         fprintf(stderr,"invalid node kind in codeGen_main\n");
         return;

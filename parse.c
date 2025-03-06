@@ -430,7 +430,7 @@ static ASTnode* unary(Token **tok_addr){
 }
 
 
-//primary = num | "(" equiality ")" | ident
+//primary = num | "(" equiality ")" | ident ("(" ")")
 static ASTnode* primary(Token **tok_addr){
     Token *tok = *tok_addr;
     if(tok->kind == TK_NUM){
@@ -456,6 +456,14 @@ static ASTnode* primary(Token **tok_addr){
     }
 
     if(tok->kind == TK_ID){
+        if(equal((*tok_addr)->next,"(")){
+            ASTnode* node=new_node(ND_FUNCALL,NULL,NULL);
+            node->funcname=strndup((*tok_addr)->loc,(*tok_addr)->len);
+            *tok_addr=(*tok_addr)->next;
+            skip(tok_addr,"(");
+            skip(tok_addr,")");
+            return node;
+        }
         ASTnode *node = new_lvarnode(tok->loc,tok->len, NULL, NULL);
         tok = tok->next;
         *tok_addr = tok;

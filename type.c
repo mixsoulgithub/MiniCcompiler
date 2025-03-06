@@ -67,6 +67,9 @@ void calcu_type(ASTnode *node){
     case ND_VAR:
     case ND_NUM:
         node->type=ty_int;
+    case ND_FUNCALL:
+        node->type=ty_int;
+        return;
         
     default:
         return;
