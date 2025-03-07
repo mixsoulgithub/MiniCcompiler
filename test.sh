@@ -108,5 +108,6 @@ assert 8 'int main(){ int x=3, y=5; return x+y; }'
 # assert 3 '{ return ret3(); }'
 assert 5 'int ret5(){return 5;} int main(){ return ret5(); }'
 assert 5 'int* addr(){int a=5; return &a;} int main(){ return *addr(); }'
+# assert 5 'int* addr(){int a=5; return &a;} int* addr(){int a=5; return &a;} int main(){ return *addr(); }'
 
 echo OK
