@@ -67,8 +67,26 @@ typedef struct LocalVar LocalVar;
 struct LocalVar {
     char *name;
     LocalVar *next;
+    Type* type;
     int offset;
 };
+
+typedef struct Scope Scope;
+struct Scope{
+  Scope* before;
+  LocalVar* locals;
+};
+
+typedef struct Function Function;
+struct Function{
+    char* name;
+    LocalVar* args;
+    int argn;
+    Scope* scope;
+    Type* type;
+    Function* next;
+};
+
 
 typedef struct ASTnode ASTnode;
 struct ASTnode {
@@ -80,12 +98,13 @@ struct ASTnode {
 
     ASTnode *cond, *then, *els;
     ASTnode *init, *inc;
-    char *funcname;
+    Function* func;
 
     ASTnode *left;
     ASTnode *right;
     Type *type;
 };
+
 
 extern LocalVar *locals;
 extern int equal(Token *tok, char *op);

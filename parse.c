@@ -1,6 +1,7 @@
 #include "mini.h"
 
 LocalVar *locals;
+Function* functions;
 
 static ASTnode* new_numnode(int num, ASTnode *left, ASTnode *right);
 
@@ -9,6 +10,14 @@ LocalVar *find_lvar(char *name, int len){
     for(LocalVar *var = locals; var; var = var->next){
         if(strlen(var->name) == len && !memcmp(var->name, name, len)){
             return var;
+        }
+    }
+    return NULL;
+}
+Function *find_func(char *name, int len){
+    for(Function *func = functions; func; func = func->next){
+        if(strlen(func->name) == len && !memcmp(func->name, name, len)){
+            return func;
         }
     }
     return NULL;
@@ -154,7 +163,7 @@ static ASTnode* new_declare_lvarnode(Token **tok_addr,Type* type){
         *tok_addr=(*tok_addr)->next;
         return node;
     }else{
-        fprintf(stderr,"redefination in file %s, line %d",__FILE__,__LINE__);
+        fprintf(stderr,"redefination of variable in file %s, line %d",__FILE__,__LINE__);
         exit(1);
     }
 }
@@ -187,14 +196,23 @@ static ASTnode* file(Token **tok_addr){
 static ASTnode* function_declare(Token **tok_addr){
     Type *basetype= getbasetype(*tok_addr);
     *tok_addr=(*tok_addr)->next;
+    if(find_func((*tok_addr)->loc,(*tok_addr)->len)){
+        fprintf(stderr,"redefination of function in file %s, line %d",__FILE__,__LINE__);
+        exit(1);
+    }
     Type * final=basetype;
     for(;equal(*tok_addr,"*")!=0;skip(tok_addr,"*")){
         final=point_to(basetype);
     }
     ASTnode* node=new_node(ND_FUNDEF,NULL,NULL);
 
-    node->funcname=strndup((*tok_addr)->loc,(*tok_addr)->len);
-    node->type=final;
+    
+    Function* func=calloc(1,sizeof(Function));
+    func->name=strndup((*tok_addr)->loc,(*tok_addr)->len);
+    func->type =node->type=final;
+    node->func=func;
+    func->next=functions;
+    functions=func;
 
     *tok_addr=(*tok_addr)->next;
     skip(tok_addr,"(");
@@ -501,7 +519,9 @@ static ASTnode* primary(Token **tok_addr){
     if(tok->kind == TK_ID){
         if(equal((*tok_addr)->next,"(")){
             ASTnode* node=new_node(ND_FUNCALL,NULL,NULL);
-            node->funcname=strndup((*tok_addr)->loc,(*tok_addr)->len);
+
+            node->func=find_func((*tok_addr)->loc,(*tok_addr)->len);
+            
             *tok_addr=(*tok_addr)->next;
             skip(tok_addr,"(");
             skip(tok_addr,")");

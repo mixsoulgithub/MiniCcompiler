@@ -147,11 +147,11 @@ static void codeGen_main(ASTnode *node){
         break;
     case ND_FUNCALL:
         printf("  mov $0, %%rax\n");
-        printf("  call %s\n", node->funcname);
+        printf("  call %s\n", node->func->name);
         return;
     case ND_FUNDEF:
-        printf("  .globl %s\n",node->funcname);
-        printf("%s:\n",node->funcname);
+        printf("  .globl %s\n",node->func->name);
+        printf("%s:\n",node->func->name);
         printf("  push %%rbp\n");//save the base pointer.
         printf("  mov %%rsp, %%rbp\n");//set the base pointer.
         if(locals){
