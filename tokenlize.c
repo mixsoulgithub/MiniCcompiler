@@ -33,7 +33,7 @@ Type * getbasetype(Token *tok){
     if(equal(tok, "int")){
         return ty_int;
     }
-    return NULL;
+    fprintf(stderr,"<%s>: undefined type",__func__);
 }
 
 Type * matchBasicType(Token* tok){
