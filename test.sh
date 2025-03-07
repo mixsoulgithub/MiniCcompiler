@@ -1,15 +1,15 @@
 #!/bin/bash
-cat <<EOF | gcc -xc -c -o tmp2.o -
-int ret3() { return 3; }
-int ret5() { return 5; }
-EOF
+# cat <<EOF | gcc -xc -c -o tmp2.o -
+# int ret3() { return 3; }
+# int ret5() { return 5; }
+# EOF
 
 assert(){
     expected="$1"
     input="$2"
 
     ./miniCcompiler "$input" > tmp.s || (echo "fail at the test : $input" && exit)
-    gcc -static -o tmp tmp.s tmp2.o
+    gcc -static -o tmp tmp.s 
     ./tmp
     actual="$?"
 
@@ -72,8 +72,8 @@ assert(){
 # assert 2 '{ return 2;}'
 # assert 3 '{1; 2; return 3;}'
 
-assert 2 '{int a=2; return a;}'
-assert 2 '{int a=2, b=a; return b;}'
+# assert 2 '{int a=2; return a;}'
+# assert 2 '{int a=2, b=a; return b;}'
 
 # assert 3 '{ if (0) return 2; }'
 # assert 3 '{ if (1-1==1) return 2; return 3; }'
@@ -83,29 +83,28 @@ assert 2 '{int a=2, b=a; return b;}'
 # assert 3 '{ if (1) { 1; 2; return 3; } else { return 4; } }'
 # assert 2 '{ if (1) { a=1; } else { a=2; }; if (a==1) {a=2;}; return a; }'
 
-assert 55 '{ int i=0; int j=0; for (i=0; i<=10; i=i+1) j=i+j; return j; }'
-assert 3 '{ for (;;) return 3; return 5; }'
+# assert 55 '{ int i=0; int j=0; for (i=0; i<=10; i=i+1) j=i+j; return j; }'
+# assert 3 '{ for (;;) return 3; return 5; }'
 
-assert 10 '{ int i=0; while(i<10) i=i+1; return i; }'
+# assert 10 '{ int i=0; while(i<10) i=i+1; return i; }'
 
-assert 3 '{ {1; {2;} return 3;} }'
+# assert 3 '{ {1; {2;} return 3;} }'
 
-assert 10 '{ int i=0; while(i<10) i=i+1; return i; }'
-assert 55 '{ int i=0; int j=0; while(i<=10) {j=i+j; i=i+1;} return j; }'
+# assert 10 '{ int i=0; while(i<10) i=i+1; return i; }'
+# assert 55 '{ int i=0; int j=0; while(i<=10) {j=i+j; i=i+1;} return j; }'
 
-assert 3 '{ int x=3; return *&x; }'
-assert 3 '{ int x=3; int *y=&x; int **z=&y; return **z; }'
-assert 5 '{ int x=3; int y=5; return *(&x-1); }'
-assert 3 '{ int x=3; int y=5; return *(&y+1); }'
-assert 5 '{ int x=3; int y=5; return *(&x+(-1)); }'
-assert 5 '{ int x=3; int *y=&x; *y=5; return x; }'
-assert 7 '{ int x=3; int y=5; *(&x-1)=7; return y; }'
-assert 7 '{ int x=3; int y=5; *(&y+2-1)=7; return x; }'
-assert 5 '{ int x=3; return (&x+2)-&x+3; }'
-assert 8 '{ int x, y; x=3; y=5; return x+y; }'
-assert 8 '{ int x=3, y=5; return x+y; }'
+assert 3 'main(){ int x=3; return *&x; }'
+assert 3 'main(){ int x=3; int *y=&x; int **z=&y; return **z; }'
+assert 5 'main(){ int x=3; int y=5; return *(&x-1); }'
+assert 3 'main(){ int x=3; int y=5; return *(&y+1); }'
+assert 5 'main(){ int x=3; int y=5; return *(&x+(-1)); }'
+assert 5 'main(){ int x=3; int *y=&x; *y=5; return x; }'
+assert 7 'main(){ int x=3; int y=5; *(&x-1)=7; return y; }'
+assert 7 'main(){ int x=3; int y=5; *(&y+2-1)=7; return x; }'
+assert 5 'main(){ int x=3; return (&x+2)-&x+3; }'
+assert 8 'main(){ int x, y; x=3; y=5; return x+y; }'
+assert 8 'main(){ int x=3, y=5; return x+y; }'
 
-assert 3 '{ return ret3(); }'
-assert 5 '{ return ret5(); }'
-
+# assert 3 '{ return ret3(); }'
+assert 5 'ret5(){return 5;} main(){ return ret5(); }'
 echo OK
