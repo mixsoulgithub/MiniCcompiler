@@ -14,9 +14,16 @@ LocalVar *find_lvar(char *name, int len){
     return NULL;
 }
 
+//
+static void record_var(char* name, int len){
+    //record to symbol table and compute offset
+    
+}
+
 int equal(Token *tok, char *str){
     return strlen(str) == tok->len && !memcmp(tok->loc, str, tok->len);
 }
+
 
 //skip string "op".
 void skip(Token **tok_addr, char *op){
@@ -129,12 +136,33 @@ static ASTnode* new_fornode(ASTnode *init, ASTnode *cond, ASTnode *inc, ASTnode 
     node->body = body;
     return node;
 }
+//id
+static ASTnode* new_declare_lvarnode(Token **tok_addr,Type* type){
+    
+    ASTnode *node;
+    if(find_lvar((*tok_addr)->loc,(*tok_addr)->len)==NULL){
+        
+        LocalVar *var=calloc(1, sizeof(LocalVar));
+        var->name = strndup((*tok_addr)->loc, (*tok_addr)->len);//strndup is not standard, but it's in glibc,'\0' is included automatically.
+        var->next = locals;
+        var->offset = locals ? (locals->offset) + 8 : 8; 
+        locals = var;
+
+        node=new_lvarnode((*tok_addr)->loc,(*tok_addr)->len,NULL,NULL);
+        node->var=var;
+        node->type=type;
+        *tok_addr=(*tok_addr)->next;
+        return node;
+    }else{
+        fprintf(stderr,"redefination in file %s, line %d",__FILE__,__LINE__);
+        exit(1);
+    }
+}
 
 static ASTnode* file(Token **tok_addr);
 static ASTnode* function_declare(Token **tok_addr);
 static ASTnode* block(Token **tok_addr);
 static ASTnode* sentence(Token **tok_addr);
-static ASTnode* starid(Token **tok_addr, Type * basetype);
 static ASTnode* assign(Token **tok_addr);
 static ASTnode* equation(Token **tok_addr);
 static ASTnode* relational(Token **tok_addr);
@@ -155,12 +183,18 @@ static ASTnode* file(Token **tok_addr){
     return node;
 }
 
-//function_declare= id "()" block;
+//function_declare=type "*"* id "()" block;
 static ASTnode* function_declare(Token **tok_addr){
+    Type *basetype= getbasetype(*tok_addr);
+    *tok_addr=(*tok_addr)->next;
+    Type * final=basetype;
+    for(;equal(*tok_addr,"*")!=0;skip(tok_addr,"*")){
+        final=point_to(basetype);
+    }
     ASTnode* node=new_node(ND_FUNDEF,NULL,NULL);
-    
+
     node->funcname=strndup((*tok_addr)->loc,(*tok_addr)->len);
-    node->type=ty_int;
+    node->type=final;
 
     *tok_addr=(*tok_addr)->next;
     skip(tok_addr,"(");
@@ -190,7 +224,7 @@ static ASTnode* block(Token **tok_addr){
 //          | "if" "(" equation ")" sentence ("else" sentence)?
 //          | "for" "(" assgin ";" equation ";" assgin ")" sentence
 //          | "while" "(" equation ")" sentence
-//          |types starid (= assign)? ("," starid (=assign)?)* ;
+//          |types "*"* id_d (= assign)? ("," "*"* id_d (=assign)?)* ;
 //reconginze keyword and terminal symbol first.
 static ASTnode* sentence(Token **tok_addr){
     Token *tok = *tok_addr;
@@ -264,19 +298,30 @@ static ASTnode* sentence(Token **tok_addr){
     if(isBaseType(*tok_addr)){
         Type *basetype= getbasetype(*tok_addr);
         *tok_addr=(*tok_addr)->next;
+        Type * final=basetype;
+        for(;equal(*tok_addr,"*")!=0;skip(tok_addr,"*")){
+            final=point_to(basetype);
+        }
         // skip(tok_addr,"int");
         ASTnode head={};
         ASTnode *cur=&head;
 
-        ASTnode* node=starid(tok_addr,basetype);
+        ASTnode* node=new_declare_lvarnode(tok_addr,final);
         if(equal(*tok_addr,"=")){
             skip(tok_addr,"=");
             node=new_node(ND_ASSIGN,node,assign(tok_addr));
         }
         cur=cur->next=node;
+
         for(;equal(*tok_addr,",");){
             skip(tok_addr,",");
-            ASTnode* node=starid(tok_addr,basetype);
+
+            Type * final=basetype;
+            for(;equal(*tok_addr,"*")!=0;skip(tok_addr,"*")){
+                final=point_to(basetype);
+            }
+            ASTnode* node=new_declare_lvarnode(tok_addr,final);
+
             if(equal(*tok_addr,"=")){
                 // fprintf(stderr,"\n try to assign!\n");
                 skip(tok_addr,"=");
@@ -295,29 +340,6 @@ static ASTnode* sentence(Token **tok_addr){
     return node;
 }
 
-//starid = "*"* id
-static ASTnode* starid(Token **tok_addr, Type *basetype){
-    Type * final=basetype;
-    for(;equal(*tok_addr,"*")!=0;skip(tok_addr,"*")){
-        final=point_to(basetype);
-    }
-    ASTnode *node;
-    if(find_lvar((*tok_addr)->loc,(*tok_addr)->len)==NULL){
-        LocalVar *var=calloc(1, sizeof(LocalVar));
-        var->name = strndup((*tok_addr)->loc, (*tok_addr)->len);//strndup is not standard, but it's in glibc,'\0' is included automatically.
-        var->next = locals;
-        var->offset = locals ? (locals->offset) + 8 : 8; 
-        locals = var;
-        node=new_lvarnode((*tok_addr)->loc,(*tok_addr)->len,NULL,NULL);
-        node->type=final;
-        node->var=var;
-        *tok_addr=(*tok_addr)->next;
-        return node;
-    }else{
-        fprintf(stderr,"redefination in file %s, line %d",__FILE__,__LINE__);
-        exit(1);
-    }
-}
 
 //assgin = equation ("=" assgin)?
 static ASTnode* assign(Token **tok_addr){
@@ -451,7 +473,7 @@ static ASTnode* unary(Token **tok_addr){
 }
 
 
-//primary = num | "(" equiality ")" | ident ("(" ")")
+//primary = num | "(" equiality ")" | ident ("(" ")")?
 static ASTnode* primary(Token **tok_addr){
     Token *tok = *tok_addr;
     if(tok->kind == TK_NUM){
@@ -486,11 +508,10 @@ static ASTnode* primary(Token **tok_addr){
             return node;
         }
         ASTnode *node = new_lvarnode(tok->loc,tok->len, NULL, NULL);
-        tok = tok->next;
-        *tok_addr = tok;
+        *tok_addr=(*tok_addr)->next;
         return node;
     }
-    fprintf(stderr, "<primary> unexpected token %s\n", tok->loc);
+    fprintf(stderr, "<primary> unexpected token %s\n", (*tok_addr)->loc);
     exit(1);
 }
 
