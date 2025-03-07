@@ -130,7 +130,8 @@ static ASTnode* new_fornode(ASTnode *init, ASTnode *cond, ASTnode *inc, ASTnode 
     return node;
 }
 
-static ASTnode* expr(Token **tok_addr);
+static ASTnode* file(Token **tok_addr);
+static ASTnode* function_declare(Token **tok_addr);
 static ASTnode* block(Token **tok_addr);
 static ASTnode* sentence(Token **tok_addr);
 static ASTnode* starid(Token **tok_addr, Type * basetype);
@@ -143,9 +144,29 @@ static ASTnode* primary(Token **tok_addr);
 static ASTnode* unary(Token **tok_addr);
 //tok is the first token of the expression.
 
-//expr = block
-static ASTnode* expr(Token **tok_addr){
-    return block(tok_addr);
+//file = function_declare*
+static ASTnode* file(Token **tok_addr){
+    ASTnode* node=function_declare(tok_addr);
+    while ((*tok_addr)->kind!=TK_EOF)
+    {
+        node->next=function_declare(tok_addr);
+    }
+    
+    return node;
+}
+
+//function_declare= id "()" block;
+static ASTnode* function_declare(Token **tok_addr){
+    ASTnode* node=new_node(ND_FUNDEF,NULL,NULL);
+    
+    node->funcname=strndup((*tok_addr)->loc,(*tok_addr)->len);
+    node->type=ty_int;
+
+    *tok_addr=(*tok_addr)->next;
+    skip(tok_addr,"(");
+    skip(tok_addr,")");
+    node->body=block(tok_addr);
+    return node;
 }
 
 //block= "{" sentence* "}"
@@ -474,5 +495,5 @@ static ASTnode* primary(Token **tok_addr){
 }
 
 ASTnode *ASTgen(Token *tok){
-    return expr(&tok);
+    return file(&tok);
 }

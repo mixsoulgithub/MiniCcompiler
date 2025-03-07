@@ -39,6 +39,7 @@ typedef enum {
     ND_VAR, // Variable
     ND_NUM, // Integer
     ND_FUNCALL,//function call
+    ND_FUNDEF,//global ...,frame.
   } NodeKind;
 
 typedef enum {

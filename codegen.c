@@ -1,6 +1,7 @@
 #include "mini.h"
 
-int count=0;
+int branch_count=0;
+int func_count=0;
 static void codeGen_main(ASTnode *node);
 
 //align memory address up to 8*k .
@@ -95,7 +96,7 @@ static void codeGen_main(ASTnode *node){
         if(node->left!=NULL){
             codeGen_main(node->left);
         }
-        printf("  jmp .L.return\n");
+        printf("  jmp .L.return%d\n",func_count);
         break;
     case ND_BLOCK:
         for(ASTnode *n=node->body;n;n=n->next){
@@ -106,46 +107,64 @@ static void codeGen_main(ASTnode *node){
         codeGen_main(node->cond);
         printf("  cmp $0, %%rax\n");
         if(node->els){
-            printf("  je .L.else%d\n",count);//rax is 0, jump to else.
+            printf("  je .L.else%d\n",branch_count);//rax is 0, jump to else.
             codeGen_main(node->then);
-            printf("  jmp .L.end%d\n",count);
+            printf("  jmp .L.end%d\n",branch_count);
 
-            printf(".L.else%d:\n",count);
+            printf(".L.else%d:\n",branch_count);
             codeGen_main(node->els);
-            printf(".L.end%d:\n",count);
+            printf(".L.end%d:\n",branch_count);
         }else{
-            printf("  je .L.end%d\n",count);
+            printf("  je .L.end%d\n",branch_count);
             codeGen_main(node->then);
-            printf(".L.end%d:\n",count);
+            printf(".L.end%d:\n",branch_count);
         }
-        count++;
+        branch_count++;
         break;
     case ND_FOR:
         if(node->init){
             codeGen_main(node->init);
         }
-        printf(".L.begin%d:\n",count);
+        printf(".L.begin%d:\n",branch_count);
         if(node->cond){
             codeGen_main(node->cond);
             printf("  cmp $0, %%rax\n");
-            printf("  je .L.end%d\n",count);
+            printf("  je .L.end%d\n",branch_count);
         }
         codeGen_main(node->body);
         if(node->inc){
             codeGen_main(node->inc);
         }
-        printf("  jmp .L.begin%d\n",count);
-        printf(".L.end%d:\n",count);
-        count++;
+        printf("  jmp .L.begin%d\n",branch_count);
+        printf(".L.end%d:\n",branch_count);
+        branch_count++;
         break;
     case ND_DEC:
         for(ASTnode *n=node->body;n;n=n->next){
             codeGen_main(n);
         }
+        func_count++;
         break;
     case ND_FUNCALL:
         printf("  mov $0, %%rax\n");
         printf("  call %s\n", node->funcname);
+        return;
+    case ND_FUNDEF:
+        printf("  .globl %s\n",node->funcname);
+        printf("%s:\n",node->funcname);
+        printf("  push %%rbp\n");//save the base pointer.
+        printf("  mov %%rsp, %%rbp\n");//set the base pointer.
+        if(locals){
+            printf("  sub $%d, %%rsp\n",align(locals->offset, 16));
+        }
+        for(ASTnode* now=node->body;now;now=now->next){
+            codeGen_main(now);
+        }
+        printf(".L.return%d:\n",func_count);
+        printf("  mov %%rbp, %%rsp\n");//restore the stack pointer.
+        printf("  pop %%rbp\n");//restore the base pointer.
+        printf("  ret\n\n");
+        func_count++;
         return;
     default:
         fprintf(stderr,"invalid node kind in codeGen_main\n");
@@ -155,19 +174,8 @@ static void codeGen_main(ASTnode *node){
 }
 
 void codeGen(ASTnode *node){
-    printf("  .globl main\n");
-    printf("main:\n");
-    printf("  push %%rbp\n");//save the base pointer.
-    printf("  mov %%rsp, %%rbp\n");//set the base pointer.
-    if(locals){
-        printf("  sub $%d, %%rsp\n",align(locals->offset, 16));
-    }
     for(;node;node=node->next){
         codeGen_main(node);
     }
-    printf(".L.return:\n");
-    printf("  mov %%rbp, %%rsp\n");//restore the stack pointer.
-    printf("  pop %%rbp\n");//restore the base pointer.
-    printf("  ret\n");
     return;
 }
