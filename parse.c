@@ -1,14 +1,21 @@
 #include "mini.h"
 
-LocalVar *locals;
 Function* functions;
 
 static ASTnode* new_numnode(int num, ASTnode *left, ASTnode *right);
 
-//return NULL if can't find.
-LocalVar *find_lvar(char *name, int len){
-    for(Scope* cur=functions->scope;cur;cur=cur->before){
-        for(LocalVar *var = cur->locals; var; var = var->next){
+//return NULL if can't find. mod=1 means find in all scope, mod=0 means find in current scope.
+LocalVar *find_lvar(char *name, int len, int mod){
+    if(mod==1){
+        for(Scope* cur=functions->scope;cur;cur=cur->before){
+            for(LocalVar *var = cur->locals; var; var = var->next){
+                if(strlen(var->name) == len && !memcmp(var->name, name, len)){
+                    return var;
+                }
+            }
+        }
+    }else if(mod==0){
+        for(LocalVar *var = functions->scope->locals; var; var = var->next){
             if(strlen(var->name) == len && !memcmp(var->name, name, len)){
                 return var;
             }
@@ -23,6 +30,21 @@ Function *find_func(char *name, int len){
         }
     }
     return NULL;
+}
+
+//any place where may declare a var, should enter scope first.
+void enter_scope(){
+    Scope *new=calloc(1,sizeof(Scope));
+    new->before=functions->scope;
+    functions->scope=new;
+}
+void quit_scope(){
+    //frame size(fs) is the max frame size in parsing this function.
+    functions->fs=(functions->fs)>(functions->curfs)?(functions->fs):(functions->curfs);
+    for(LocalVar *var=functions->scope->locals;var;var=var->next){
+        functions->curfs-=8;
+    }
+    functions->scope=functions->scope->before;
 }
 
 //1 is equal
@@ -130,7 +152,7 @@ static ASTnode* new_numnode(int num, ASTnode *left, ASTnode *right){
 static ASTnode* new_lvarnode(char* name,int len, ASTnode *left, ASTnode *right){
     ASTnode *node = new_node(ND_VAR, left, right);
 
-    LocalVar *var=find_lvar(name, len);
+    LocalVar *var=find_lvar(name, len, 1);
     if(var){
         node->var=var;
         return node;
@@ -164,14 +186,16 @@ static ASTnode* new_fornode(ASTnode *init, ASTnode *cond, ASTnode *inc, ASTnode 
 static ASTnode* new_declare_lvarnode(Token **tok_addr,Type* type){
     
     ASTnode *node;
-    if(find_lvar((*tok_addr)->loc,(*tok_addr)->len)==NULL){
+    //if not find in current scope, then we can declare it.
+    if(find_lvar((*tok_addr)->loc,(*tok_addr)->len,0)==NULL){
         
         //initialize local variable
         LocalVar *var=calloc(1, sizeof(LocalVar));
         var->name = strndup((*tok_addr)->loc, (*tok_addr)->len);//strndup is not standard, but it's in glibc,'\0' is included automatically.
         var->next = functions->scope->locals;
         var->type=type;//!!!
-        var->offset = functions->scope->locals ? (functions->scope->locals->offset) + 8 : 8; 
+        var->offset = (functions->curfs) ? (functions->curfs) + 8 : 8; 
+        functions->curfs=var->offset;
         //add var to scope
         functions->scope->locals = var;
 
@@ -191,6 +215,7 @@ static ASTnode* file(Token **tok_addr);
 static ASTnode* function_declare(Token **tok_addr);
 static ASTnode* block(Token **tok_addr);
 static ASTnode* sentence(Token **tok_addr);
+static ASTnode* var_declare(Token **tok_addr);
 static ASTnode* assign(Token **tok_addr);
 static ASTnode* equation(Token **tok_addr);
 static ASTnode* relational(Token **tok_addr);
@@ -230,23 +255,27 @@ static ASTnode* function_declare(Token **tok_addr){
     func->name=strndup((*tok_addr)->loc,(*tok_addr)->len);
     func->type =node->type=final;
     func->scope=calloc(1,sizeof(Scope));
-
-    //binding node to function
-    node->func=func;
+    func->fs=func->curfs=0;
 
     //update function list
     func->next=functions;
     functions=func;
 
+    //binding node to function
+    node->func=func;
+
     *tok_addr=(*tok_addr)->next;
     skip(tok_addr,"(");
     skip(tok_addr,")");
+
     node->body=block(tok_addr);
+    
     return node;
 }
 
 //block= "{" sentence* "}"
 static ASTnode* block(Token **tok_addr){
+    enter_scope();
     Token *tok = *tok_addr;
     skip(tok_addr, "{");
 
@@ -259,6 +288,7 @@ static ASTnode* block(Token **tok_addr){
     }
     tok = tok->next;
     *tok_addr = tok;
+    quit_scope();
     return new_blocknode(head.next);
 }
 
@@ -266,7 +296,7 @@ static ASTnode* block(Token **tok_addr){
 //          | "if" "(" equation ")" sentence ("else" sentence)?
 //          | "for" "(" assgin ";" equation ";" assgin ")" sentence
 //          | "while" "(" equation ")" sentence
-//          |types "*"* id_d (= assign)? ("," "*"* id_d (=assign)?)* ;
+//          |lvar_declare
 //reconginze keyword and terminal symbol first.
 static ASTnode* sentence(Token **tok_addr){
     Token *tok = *tok_addr;
@@ -300,10 +330,16 @@ static ASTnode* sentence(Token **tok_addr){
             skip(tok_addr, "(");
             ASTnode *cond = equation(tok_addr);
             skip(tok_addr, ")");
+            //think, and you will find "if" don't need scope independent with block.
             ASTnode *then = sentence(tok_addr);
+
             if(equal(*tok_addr, "else")){
                 skip(tok_addr,"else");
+
+                enter_scope();
                 ASTnode *els = sentence(tok_addr);
+                quit_scope();
+
                 return new_ifnode(cond, then, els);
             }
             return new_ifnode(cond, then, NULL);
@@ -314,10 +350,15 @@ static ASTnode* sentence(Token **tok_addr){
             init = cond = inc = NULL;
             skip(tok_addr, "(");
 
+            enter_scope();
             if(!equal(*tok_addr, ";")){
-                init = assign(tok_addr);//will be NULL if there is no initialization.
+                if(isBaseType(*tok_addr)){
+                    init = var_declare(tok_addr);
+                }else{
+                    init = assign(tok_addr);//will be NULL if there is no initialization.
+                    skip(tok_addr, ";");
+                }
             }
-            skip(tok_addr, ";");
 
             if(!equal(*tok_addr, ";")){
                 cond = equation(tok_addr);
@@ -330,6 +371,7 @@ static ASTnode* sentence(Token **tok_addr){
             skip(tok_addr, ")");
 
             ASTnode *body = sentence(tok_addr);
+            quit_scope();
             return new_fornode(init, cond, inc, body);
         }
         if(equal(tok, "while")){
@@ -338,13 +380,26 @@ static ASTnode* sentence(Token **tok_addr){
             skip(tok_addr, "(");
             ASTnode *cond = equation(tok_addr);
             skip(tok_addr, ")");
+
+            //think, and you will find "while" don't need scope independent with block.
             ASTnode *body = sentence(tok_addr);
+
             return new_fornode(NULL, cond, NULL, body);
         }
     }
     
     if(isBaseType(*tok_addr)){
-        Type *basetype= getbasetype(*tok_addr);
+        return var_declare(tok_addr);
+    }
+
+    ASTnode *node = assign(tok_addr);
+    skip(tok_addr, ";");
+    return node;
+}
+
+//lvar_declare=types "*"* id_d (= assign)? ("," "*"* id_d (=assign)?)* ;
+static ASTnode* var_declare(Token **tok_addr){
+    Type *basetype= getbasetype(*tok_addr);
         *tok_addr=(*tok_addr)->next;
         Type * final=basetype;
         for(;equal(*tok_addr,"*")!=0;skip(tok_addr,"*")){
@@ -381,13 +436,7 @@ static ASTnode* sentence(Token **tok_addr){
         ASTnode *ans=new_node(ND_DEC,NULL,NULL);
         ans->body=head.next;
         return ans;
-    }
-
-    ASTnode *node = assign(tok_addr);
-    skip(tok_addr, ";");
-    return node;
 }
-
 
 //assgin = equation ("=" assgin)?
 static ASTnode* assign(Token **tok_addr){
