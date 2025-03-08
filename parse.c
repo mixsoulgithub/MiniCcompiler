@@ -23,12 +23,33 @@ Function *find_func(char *name, int len){
     return NULL;
 }
 
-//
-static void record_var(char* name, int len){
-    //record to symbol table and compute offset
+//1 is equal
+int type_equal(Type *ty1, Type *ty2){
+    if(ty1==NULL||ty2==NULL)
+        fprintf(stderr,"<%s>: type can't be NULL",__func__);
+    if(ty1->tykind==TY_POINTER&&ty2->tykind==TY_POINTER){
+        Type*ltmp=ty1->base;
+        Type*rtmp=ty2->base;
+        while(ltmp->tykind==TY_POINTER&&rtmp->tykind==TY_POINTER){
+            ltmp=ltmp->base;
+            rtmp=rtmp->base;
+        }
+        if(ltmp->tykind==rtmp->tykind){
+            return 1;
+        }else{
+            fprintf(stderr,"<%s>:pointer layer diffrent.\n",__func__);
+        }
+    }else if(ty1->tykind==ty2->tykind){
+        return 1;
+    }else{
+        return 0;
+    }
+
+    // return 1;
     
 }
 
+//1 is equal
 int equal(Token *tok, char *str){
     return strlen(str) == tok->len && !memcmp(tok->loc, str, tok->len);
 }
@@ -154,6 +175,7 @@ static ASTnode* new_declare_lvarnode(Token **tok_addr,Type* type){
         LocalVar *var=calloc(1, sizeof(LocalVar));
         var->name = strndup((*tok_addr)->loc, (*tok_addr)->len);//strndup is not standard, but it's in glibc,'\0' is included automatically.
         var->next = locals;
+        var->type=type;//!!!
         var->offset = locals ? (locals->offset) + 8 : 8; 
         locals = var;
 
@@ -202,7 +224,7 @@ static ASTnode* function_declare(Token **tok_addr){
     }
     Type * final=basetype;
     for(;equal(*tok_addr,"*")!=0;skip(tok_addr,"*")){
-        final=point_to(basetype);
+        final=point_to(final);
     }
     ASTnode* node=new_node(ND_FUNDEF,NULL,NULL);
 
@@ -262,6 +284,12 @@ static ASTnode* sentence(Token **tok_addr){
             skip(tok_addr,"return");
             // fprintf(stderr,"now token in %s",(*tok_addr)->loc);
             ASTnode *node = new_node(ND_RETURN, assign(tok_addr), NULL);
+            // if(!type_equal(getNodeType(node->left),functions->type)){
+            //     fprintf(stderr,"<%s>: return type unmatch in %s",__func__,functions->name);
+            // }
+            if(!type_equal(getNodeType(node->left),functions->type)){
+                fprintf(stderr,"<%s>: return type unmatch in %s \n",__func__,functions->name);
+            }
             skip(tok_addr, ";");
             return node;
         }
@@ -318,7 +346,7 @@ static ASTnode* sentence(Token **tok_addr){
         *tok_addr=(*tok_addr)->next;
         Type * final=basetype;
         for(;equal(*tok_addr,"*")!=0;skip(tok_addr,"*")){
-            final=point_to(basetype);
+            final=point_to(final);
         }
         // skip(tok_addr,"int");
         ASTnode head={};
@@ -336,7 +364,7 @@ static ASTnode* sentence(Token **tok_addr){
 
             Type * final=basetype;
             for(;equal(*tok_addr,"*")!=0;skip(tok_addr,"*")){
-                final=point_to(basetype);
+                final=point_to(final);
             }
             ASTnode* node=new_declare_lvarnode(tok_addr,final);
 
@@ -471,19 +499,19 @@ static ASTnode* unary(Token **tok_addr){
     }
     if(*tok->loc=='-'){
         *tok_addr=tok->next;
-        ASTnode *node =new_node(ND_NEG, NULL, unary(tok_addr));
+        ASTnode *node =new_node(ND_NEG, unary(tok_addr), NULL);
         tok=*tok_addr;
         return node;
     }
     if(*tok->loc=='&'){
         *tok_addr=tok->next;
-        ASTnode *node =new_node(ND_ADDR, NULL, unary(tok_addr));
+        ASTnode *node =new_node(ND_ADDR, unary(tok_addr), NULL);
         tok=*tok_addr;
         return node;
     }
     if(*tok->loc=='*'){
         *tok_addr=tok->next;
-        ASTnode *node =new_node(ND_DEREF, NULL, unary(tok_addr));
+        ASTnode *node =new_node(ND_DEREF, unary(tok_addr), NULL);
         tok=*tok_addr;
         return node;
     }

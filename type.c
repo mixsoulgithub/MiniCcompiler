@@ -44,20 +44,18 @@ void calcu_type(ASTnode *node){
     case ND_SUB:
     case ND_MUL:
     case ND_DIV:
-        node->type = node->left->type;
-        return;
     case ND_NEG:
     case ND_ASSIGN:
-        node->type = node->right->type;
+        node->type = node->left->type;
         return;
     case ND_ADDR:
-        node->type=point_to(node->right->type);
+        node->type=point_to(node->left->type);
         return;
     case ND_DEREF:
-        if(node->type->tykind==TY_POINTER){
-            node->type=node->right->type->base;
+        if(node->left->type->tykind==TY_POINTER){
+            node->type=node->left->type->base;
         }else{
-            fprintf(stderr,"dereference of non-pointer");
+            fprintf(stderr,"dereference of non-pointer\n");
         }
         return;
     case ND_EQ:
@@ -65,10 +63,13 @@ void calcu_type(ASTnode *node){
     case ND_LT:
     case ND_LE:
     case ND_VAR:
+        node->type=node->var->type;
+        return;
     case ND_NUM:
         node->type=ty_int;
+        return;//!!!
     case ND_FUNCALL:
-        node->type=ty_int;
+        node->type=node->func->type;
         return;
         
     default:
