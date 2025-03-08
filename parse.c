@@ -7,9 +7,11 @@ static ASTnode* new_numnode(int num, ASTnode *left, ASTnode *right);
 
 //return NULL if can't find.
 LocalVar *find_lvar(char *name, int len){
-    for(LocalVar *var = locals; var; var = var->next){
-        if(strlen(var->name) == len && !memcmp(var->name, name, len)){
-            return var;
+    for(Scope* cur=functions->scope;cur;cur=cur->before){
+        for(LocalVar *var = cur->locals; var; var = var->next){
+            if(strlen(var->name) == len && !memcmp(var->name, name, len)){
+                return var;
+            }
         }
     }
     return NULL;
@@ -135,14 +137,6 @@ static ASTnode* new_lvarnode(char* name,int len, ASTnode *left, ASTnode *right){
     }else{
         fprintf(stderr,"undefined variable at file %s, line %d",__FILE__,__LINE__);
     }
-    //head insert makes earlier defined variable have smaller offset and closer to rbp.
-    // var = calloc(1, sizeof(LocalVar));
-    // var->name = strndup(name, len);//strndup is not standard, but it's in glibc,'\0' is included automatically.
-    // var->next = locals;
-    // var->offset = locals ? (locals->offset) + 8 : 8; 
-    // locals = var;
-    // node->var=var;
-    // return node;
 }
 
 static ASTnode* new_blocknode(ASTnode *body){
@@ -172,13 +166,16 @@ static ASTnode* new_declare_lvarnode(Token **tok_addr,Type* type){
     ASTnode *node;
     if(find_lvar((*tok_addr)->loc,(*tok_addr)->len)==NULL){
         
+        //initialize local variable
         LocalVar *var=calloc(1, sizeof(LocalVar));
         var->name = strndup((*tok_addr)->loc, (*tok_addr)->len);//strndup is not standard, but it's in glibc,'\0' is included automatically.
-        var->next = locals;
+        var->next = functions->scope->locals;
         var->type=type;//!!!
-        var->offset = locals ? (locals->offset) + 8 : 8; 
-        locals = var;
+        var->offset = functions->scope->locals ? (functions->scope->locals->offset) + 8 : 8; 
+        //add var to scope
+        functions->scope->locals = var;
 
+        //create node and bind var to node
         node=new_lvarnode((*tok_addr)->loc,(*tok_addr)->len,NULL,NULL);
         node->var=var;
         node->type=type;
@@ -228,11 +225,16 @@ static ASTnode* function_declare(Token **tok_addr){
     }
     ASTnode* node=new_node(ND_FUNDEF,NULL,NULL);
 
-    
+    //initialize function
     Function* func=calloc(1,sizeof(Function));
     func->name=strndup((*tok_addr)->loc,(*tok_addr)->len);
     func->type =node->type=final;
+    func->scope=calloc(1,sizeof(Scope));
+
+    //binding node to function
     node->func=func;
+
+    //update function list
     func->next=functions;
     functions=func;
 
@@ -548,7 +550,9 @@ static ASTnode* primary(Token **tok_addr){
         if(equal((*tok_addr)->next,"(")){
             ASTnode* node=new_node(ND_FUNCALL,NULL,NULL);
 
+            //binding node to function
             node->func=find_func((*tok_addr)->loc,(*tok_addr)->len);
+            //function args node generate and type check
             
             *tok_addr=(*tok_addr)->next;
             skip(tok_addr,"(");

@@ -154,8 +154,8 @@ static void codeGen_main(ASTnode *node){
         printf("%s:\n",node->func->name);
         printf("  push %%rbp\n");//save the base pointer.
         printf("  mov %%rsp, %%rbp\n");//set the base pointer.
-        if(locals){
-            printf("  sub $%d, %%rsp\n",align(locals->offset, 16));
+        if(node->func->scope->locals){
+            printf("  sub $%d, %%rsp\n",align(node->func->scope->locals->offset, 16));
         }
         for(ASTnode* now=node->body;now;now=now->next){
             codeGen_main(now);
