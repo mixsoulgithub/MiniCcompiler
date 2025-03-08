@@ -4,9 +4,9 @@ int branch_count=0;
 int func_count=0;
 static void codeGen_main(ASTnode *node);
 
-//align memory address up to 8*k .
-static int align(int n, int align){
-    return (n+align-1)/align * align;
+//align address n up to base*k .
+static int align(int n, int base){
+    return (n+base-1)/base * base;
 }
 
 static void gen_addr(ASTnode *node){
@@ -154,8 +154,9 @@ static void codeGen_main(ASTnode *node){
         printf("%s:\n",node->func->name);
         printf("  push %%rbp\n");//save the base pointer.
         printf("  mov %%rsp, %%rbp\n");//set the base pointer.
-        if(node->func->scope->locals){
-            printf("  sub $%d, %%rsp\n",align(node->func->scope->locals->offset, 16));
+        if(node->func){
+            //frame size is 16 aligned, x86_64 ABI.
+            printf("  sub $%d, %%rsp\n",align(node->func->fs, 16));
         }
         for(ASTnode* now=node->body;now;now=now->next){
             codeGen_main(now);

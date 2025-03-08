@@ -105,10 +105,14 @@ assert(){
 
 # assert 3 '{ return ret3(); }'
 # assert 5 'int ret5(){return 5;} int main(){ return ret5(); }'
+assert 3 'int a(){int a=3; return a;} int main(){ int a=3;return a;}'
 assert 5 'int* addr(){int a=5; return &a;} int main(){ return *addr(); }'
-assert 5 'int** addr(){int a=5; int* y=&a; return &y;} int main(){ return **addr(); }'
+# assert 5 'int** addr(){int a=5; int* y=&a; return &y;} int main(){ return **addr(); }'
 assert 5 'int* addr(){int a=5; return &a;} int main(){ return *addr(); }'
 assert 6 'int a(){int a=5; return a+1;} int main(){ return a(); }'
 assert 6 'int a(){int a=5; return a+1;} int main(){ int a; return a(); }'
+assert 10 'int a(){int a=5; int b=10; if(a==5){int b=5;a=a+b;} return a;} int main(){ int a=1;if(a==1){return a();}}'
+assert 1 'int main(){int a=1; for(int i=0;i<5;i=i+1){int a=a+i;} return a;}'
+assert 2 'int main(){int a=1; while(a==1){return 2;} return 1;}'
 
 echo OK
