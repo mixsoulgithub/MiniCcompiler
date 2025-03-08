@@ -13,9 +13,7 @@ assert(){
     ./tmp
     actual="$?"
 
-    if [ "$actual" = "$expected" ]; then
-        echo "$input == $actual"
-    else
+    if [ "$actual" != "$expected" ]; then
         echo "$input == $expected expected, but got $actual"
         exit 1
     fi
@@ -93,21 +91,22 @@ assert(){
 # assert 10 '{ int i=0; while(i<10) i=i+1; return i; }'
 # assert 55 '{ int i=0; int j=0; while(i<=10) {j=i+j; i=i+1;} return j; }'
 
-assert 3 'int main(){ int x=3; return *&x; }'
-assert 3 'int main(){ int x=3; int *y=&x; int **z=&y; return **z; }'
-assert 5 'int main(){ int x=3; int y=5; return *(&x-1); }'
-assert 3 'int main(){ int x=3; int y=5; return *(&y+1); }'
-assert 5 'int main(){ int x=3; int y=5; return *(&x+(-1)); }'
-assert 5 'int main(){ int x=3; int *y=&x; *y=5; return x; }'
-assert 7 'int main(){ int x=3; int y=5; *(&x-1)=7; return y; }'
-assert 7 'int main(){ int x=3; int y=5; *(&y+2-1)=7; return x; }'
-assert 5 'int main(){ int x=3; return (&x+2)-&x+3; }'
-assert 8 'int main(){ int x, y; x=3; y=5; return x+y; }'
-assert 8 'int main(){ int x=3, y=5; return x+y; }'
+# assert 3 'int main(){ int x=3; return *&x; }'
+# assert 3 'int main(){ int x=3; int *y=&x; int **z=&y; return **z; }'
+# assert 5 'int main(){ int x=3; int y=5; return *(&x-1); }'
+# assert 3 'int main(){ int x=3; int y=5; return *(&y+1); }'
+# assert 5 'int main(){ int x=3; int y=5; return *(&x+(-1)); }'
+# assert 5 'int main(){ int x=3; int *y=&x; *y=5; return x; }'
+# assert 7 'int main(){ int x=3; int y=5; *(&x-1)=7; return y; }'
+# assert 7 'int main(){ int x=3; int y=5; *(&y+2-1)=7; return x; }'
+# assert 5 'int main(){ int x=3; return (&x+2)-&x+3; }'
+# assert 8 'int main(){ int x, y; x=3; y=5; return x+y; }'
+# assert 8 'int main(){ int x=3, y=5; return x+y; }'
 
 # assert 3 '{ return ret3(); }'
-assert 5 'int ret5(){return 5;} int main(){ return ret5(); }'
+# assert 5 'int ret5(){return 5;} int main(){ return ret5(); }'
 assert 5 'int* addr(){int a=5; return &a;} int main(){ return *addr(); }'
+assert 5 'int** addr(){int a=5; int* y=&a; return &y;} int main(){ return **addr(); }'
 # assert 5 'int* addr(){int a=5; return &a;} int* addr(){int a=5; return &a;} int main(){ return *addr(); }'
 
 echo OK

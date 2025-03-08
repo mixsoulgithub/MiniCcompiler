@@ -9,6 +9,12 @@ $(SRC):mini.h
 test: miniCcompiler
 	./test.sh
 
+miniCcompiler_d: $(SRC)
+	gcc -g -o $@ $^
+
+debug:miniCcompiler_d
+	gdb ./miniCcompiler_d
+
 clean:
 	rm -f miniCcompiler *.o *~ *.s tmp* *.out
 

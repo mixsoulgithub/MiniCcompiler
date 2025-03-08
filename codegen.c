@@ -16,7 +16,7 @@ static void gen_addr(ASTnode *node){
         printf("  lea %d(%%rbp), %%rax\n", -node->var->offset);
         break;
     case ND_DEREF:
-        codeGen_main(node->right);
+        codeGen_main(node->left);
         break;
     default:
         fprintf(stderr,"invalid node kind in gen_addr\n");
@@ -52,14 +52,14 @@ static void codeGen_main(ASTnode *node){
         printf("  idiv %%rdi\n");
         break;
     case ND_NEG:
-        codeGen_main(node->right);
+        codeGen_main(node->left);
         printf("  neg %%rax\n");
         break;
     case ND_ADDR:
-        gen_addr(node->right);
+        gen_addr(node->left);
         break;
     case ND_DEREF:
-        codeGen_main(node->right);
+        codeGen_main(node->left);
         printf("  mov (%%rax), %%rax\n");
         break;
     case ND_EQ:
