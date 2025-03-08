@@ -83,6 +83,7 @@ struct Function{
     LocalVar* args;
     int argn;
     Scope* scope;
+    int framesize;
     Type* type;
     Function* next;
 };

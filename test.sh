@@ -107,6 +107,8 @@ assert(){
 # assert 5 'int ret5(){return 5;} int main(){ return ret5(); }'
 assert 5 'int* addr(){int a=5; return &a;} int main(){ return *addr(); }'
 assert 5 'int** addr(){int a=5; int* y=&a; return &y;} int main(){ return **addr(); }'
-# assert 5 'int* addr(){int a=5; return &a;} int* addr(){int a=5; return &a;} int main(){ return *addr(); }'
+assert 5 'int* addr(){int a=5; return &a;} int main(){ return *addr(); }'
+assert 6 'int a(){int a=5; return a+1;} int main(){ return a(); }'
+assert 6 'int a(){int a=5; return a+1;} int main(){ int a; return a(); }'
 
 echo OK
