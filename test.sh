@@ -114,5 +114,8 @@ assert 6 'int a(){int a=5; return a+1;} int main(){ int a; return a(); }'
 assert 10 'int a(){int a=5; int b=10; if(a==5){int b=5;a=a+b;} return a;} int main(){ int a=1;if(a==1){return a();}}'
 assert 1 'int main(){int a=1; for(int i=0;i<5;i=i+1){int a=a+i;} return a;}'
 assert 2 'int main(){int a=1; while(a==1){return 2;} return 1;}'
+assert 42 'int a(int a){return a;} int main(){return a(42);}'
+assert 42 'int a(int a,int b){return a+b;} int main(){return a(20,22);}'
+assert 55 'int feb(int n){if(n==0){return 0;} if(n==1){return 1;} return feb(n-1)+feb(n-2);} int main(){return feb(10);}'
 
 echo OK
