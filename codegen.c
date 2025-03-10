@@ -13,8 +13,14 @@ static void gen_addr(ASTnode *node){
     switch (node->kind)
     {
     case ND_VAR:
-        printf("  lea %d(%%rbp), %%rax\n", -node->var->offset);
-        break;
+       //offset >0 is local variable, <0 is function arguments. 
+       if(node->var->offset<0){
+            printf("  lea %d(%%rbp), %%rax\n", -node->var->offset + 8);//8 is the breakpoint's size.
+            break;
+        }else{
+            printf("  lea %d(%%rbp), %%rax\n", -node->var->offset);
+            break;
+        }
     case ND_DEREF:
         codeGen_main(node->left);
         break;
@@ -146,8 +152,15 @@ static void codeGen_main(ASTnode *node){
         func_count++;
         break;
     case ND_FUNCALL:
+        LocalVar * cur_arg=node->func->args;
+        for(ASTnode *tmp =node->init;tmp;tmp=tmp->next){
+            codeGen_main(tmp);
+            printf("  push %%rax\n");
+            cur_arg=cur_arg->next;
+        }
         printf("  mov $0, %%rax\n");
         printf("  call %s\n", node->func->name);
+        printf("  add $%d, %%rsp\n",node->func->argn*8);
         return;
     case ND_FUNDEF:
         printf("  .globl %s\n",node->func->name);

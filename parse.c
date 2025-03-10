@@ -14,6 +14,12 @@ LocalVar *find_lvar(char *name, int len, int mod){
                 }
             }
         }
+        //find in args
+        for(LocalVar *var=functions->args;var;var=var->next){
+            if(strlen(var->name) == len && !memcmp(var->name, name, len)){
+                return var;
+            }
+        }
     }else if(mod==0){
         for(LocalVar *var = functions->scope->locals; var; var = var->next){
             if(strlen(var->name) == len && !memcmp(var->name, name, len)){
@@ -211,6 +217,46 @@ static ASTnode* new_declare_lvarnode(Token **tok_addr,Type* type){
     }
 }
 
+//type= basetype "*"*
+Type* type(Token **tok_addr){
+    Type *basetype= getbasetype(*tok_addr);
+    *tok_addr=(*tok_addr)->next;
+    Type * final=basetype;
+    for(;equal(*tok_addr,"*")!=0;skip(tok_addr,"*")){
+        final=point_to(final);
+    }
+    return final;
+}
+
+//arg_declare = type arg ("," type arg)* [")"]
+void arg_declare(Token** tok_addr){
+    if(equal(*tok_addr,")")) return;
+    LocalVar* arg=calloc(1,sizeof(LocalVar));
+    Type* final=type(tok_addr);
+    arg->type=final;
+    arg->name=strndup((*tok_addr)->loc,(*tok_addr)->len);
+    arg->next=functions->args;
+    (functions->argn)++;
+    //offset = address - rsp.  
+    arg->offset=-(functions->argn)*8;
+    functions->args=arg;
+    (*tok_addr)=(*tok_addr)->next;
+    
+    while(!equal(*tok_addr,")")){
+        skip(tok_addr,",");
+        LocalVar* arg=calloc(1,sizeof(LocalVar));
+        Type* final=type(tok_addr);
+        arg->type=final;
+        arg->name=strndup((*tok_addr)->loc,(*tok_addr)->len);
+        arg->next=functions->args;
+        (functions->argn)++;
+        arg->offset=-(functions->argn)*8 ;
+        functions->args=arg;
+        (*tok_addr)=(*tok_addr)->next;
+    }
+
+}
+
 static ASTnode* file(Token **tok_addr);
 static ASTnode* function_declare(Token **tok_addr);
 static ASTnode* block(Token **tok_addr);
@@ -236,7 +282,7 @@ static ASTnode* file(Token **tok_addr){
     return node;
 }
 
-//function_declare=type "*"* id "()" block;
+//function_declare=type "*"* id "( arg_declare )" block;
 static ASTnode* function_declare(Token **tok_addr){
     Type *basetype= getbasetype(*tok_addr);
     *tok_addr=(*tok_addr)->next;
@@ -256,6 +302,7 @@ static ASTnode* function_declare(Token **tok_addr){
     func->type =node->type=final;
     func->scope=calloc(1,sizeof(Scope));
     func->fs=func->curfs=0;
+    *tok_addr=(*tok_addr)->next;
 
     //update function list
     func->next=functions;
@@ -264,8 +311,9 @@ static ASTnode* function_declare(Token **tok_addr){
     //binding node to function
     node->func=func;
 
-    *tok_addr=(*tok_addr)->next;
+    
     skip(tok_addr,"(");
+    arg_declare(tok_addr);
     skip(tok_addr,")");
 
     node->body=block(tok_addr);
@@ -605,6 +653,49 @@ static ASTnode* primary(Token **tok_addr){
             
             *tok_addr=(*tok_addr)->next;
             skip(tok_addr,"(");
+
+            // ASTnode head={};
+            // ASTnode* cur=&head;
+
+            // cur=cur->next=assign(tok_addr);
+            // LocalVar* cur_arg=node->func->args;
+            // if(!type_equal(getNodeType(cur->left),cur_arg->type)){
+            //     fprintf(stderr,"<%s>: args type unmatch when %s call %s\n",__func__,functions->name,node->func->name);
+            // }
+
+            // while(!equal(*tok_addr,")")){
+            //     skip(tok_addr,",");
+
+            //     cur=cur->next=assign(tok_addr);
+            //     cur_arg=cur_arg->next;
+            //     if(!type_equal(getNodeType(cur->left),cur_arg->type)){
+            //         fprintf(stderr,"<%s>: args type unmatch when %s call %s\n",__func__,functions->name,node->func->name);
+            //     }
+                
+            // }
+            // node->init=head.next;
+
+            int argnum=node->func->argn;
+            if(argnum==0){
+                skip(tok_addr,")");
+                return node;
+            }
+            node->init=assign(tok_addr);
+            ASTnode *cur;
+            while(!equal(*tok_addr,")")){
+                skip(tok_addr,",");
+                cur=assign(tok_addr);
+                cur->next=node->init;
+                node->init=cur;
+            }
+            
+            cur=node->init;
+            for(LocalVar* cur_arg=node->func->args;cur_arg;cur_arg=cur_arg->next){
+                if(!type_equal(getNodeType(cur),cur_arg->type)){
+                    fprintf(stderr,"<%s>: args type unmatch when %s call %s\n",__func__,functions->name,node->func->name);
+                }
+                cur=cur->next;
+            }
             skip(tok_addr,")");
             return node;
         }
