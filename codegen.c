@@ -32,6 +32,19 @@ static void gen_addr(ASTnode *node){
 }
 
 static void codeGen_main(ASTnode *node){
+    switch (node->kind)
+    {
+    case ND_ASSIGN:
+        gen_addr(node->left);
+        // codeGen_main(node->left);?
+        printf("  push %%rax\n");
+        codeGen_main(node->right);
+        printf("  pop %%rdi\n");
+        printf("  mov %%rax, (%%rdi)\n");
+        return;
+    default:
+        break;
+    }
 
     if(node->right!=NULL&&node->left!=NULL){//handle normal codition together in case stack imbalance.
         codeGen_main(node->right);
@@ -86,13 +99,6 @@ static void codeGen_main(ASTnode *node){
         printf("  movzb %%al, %%rax\n");
         break;
     case ND_EMPTY:
-        break;
-    case ND_ASSIGN:
-        gen_addr(node->left);
-        printf("  push %%rax\n");
-        codeGen_main(node->right);
-        printf("  pop %%rdi\n");
-        printf("  mov %%rax, (%%rdi)\n");
         break;
     case ND_VAR:
         gen_addr(node);

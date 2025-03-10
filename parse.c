@@ -230,6 +230,7 @@ Type* type(Token **tok_addr){
 
 //arg_declare = type arg ("," type arg)* [")"]
 void arg_declare(Token** tok_addr){
+    //head insert
     if(equal(*tok_addr,")")) return;
     LocalVar* arg=calloc(1,sizeof(LocalVar));
     Type* final=type(tok_addr);
@@ -675,6 +676,7 @@ static ASTnode* primary(Token **tok_addr){
             // }
             // node->init=head.next;
 
+            //head insert
             int argnum=node->func->argn;
             if(argnum==0){
                 skip(tok_addr,")");
