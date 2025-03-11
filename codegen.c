@@ -117,39 +117,42 @@ static void codeGen_main(ASTnode *node){
         break;
     case ND_IF:
         codeGen_main(node->cond);
+        branch_count++;
+        int cur_branch=branch_count;//save the current branch count in case of recursive if.
         printf("  cmp $0, %%rax\n");
         if(node->els){
-            printf("  je .L.else%d\n",branch_count);//rax is 0, jump to else.
+            printf("  je .L.else%d\n",cur_branch);//rax is 0, jump to else.
             codeGen_main(node->then);
-            printf("  jmp .L.end%d\n",branch_count);
+            printf("  jmp .L.end%d\n",cur_branch);
 
-            printf(".L.else%d:\n",branch_count);
+            printf(".L.else%d:\n",cur_branch);
             codeGen_main(node->els);
-            printf(".L.end%d:\n",branch_count);
+            printf(".L.end%d:\n",cur_branch);
         }else{
-            printf("  je .L.end%d\n",branch_count);
+            printf("  je .L.end%d\n",cur_branch);
             codeGen_main(node->then);
-            printf(".L.end%d:\n",branch_count);
+            printf(".L.end%d:\n",cur_branch);
         }
-        branch_count++;
+       
         break;
     case ND_FOR:
+        branch_count++;
+        int cur_branch_for=branch_count;
         if(node->init){
             codeGen_main(node->init);
         }
-        printf(".L.begin%d:\n",branch_count);
+        printf(".L.begin%d:\n",cur_branch_for);
         if(node->cond){
             codeGen_main(node->cond);
             printf("  cmp $0, %%rax\n");
-            printf("  je .L.end%d\n",branch_count);
+            printf("  je .L.end%d\n",cur_branch_for);
         }
         codeGen_main(node->body);
         if(node->inc){
             codeGen_main(node->inc);
         }
-        printf("  jmp .L.begin%d\n",branch_count);
-        printf(".L.end%d:\n",branch_count);
-        branch_count++;
+        printf("  jmp .L.begin%d\n",cur_branch_for);
+        printf(".L.end%d:\n",cur_branch_for);
         break;
     case ND_DEC:
         for(ASTnode *n=node->body;n;n=n->next){

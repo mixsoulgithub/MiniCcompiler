@@ -2,7 +2,7 @@
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
-        fprintf(stderr,"Usage: %s <source code string>\n", argv[0]);
+        fprintf(stderr,"Usage: %s <source file>\n", argv[0]);
         return 1;
     }
     Token *tok = Tokenlize(argv[1]);

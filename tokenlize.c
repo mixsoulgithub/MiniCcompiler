@@ -1,5 +1,6 @@
 #include "mini.h"
 
+static char *read_file(char *path);
 static int legal_var_name1(char c){
     if('a'<=c&&c<='z'||'A'<=c&&c<='Z'||c=='_'){
         return 1;
@@ -44,9 +45,10 @@ Type * matchBasicType(Token* tok){
 }
 
 //Tokenlize the input string p and return the first token.
-Token* Tokenlize(char *p){
+Token* Tokenlize(char *path){
     Token head = {};
     Token *cur = &head;
+    char *p=read_file(path);
     while (*p) {
         if (isspace(*p)) {
             p++;
@@ -122,3 +124,40 @@ Token* Tokenlize(char *p){
     }
     return head.next;
 }
+
+static char *read_file(char *path) {
+    FILE *fp;
+  
+    if (strcmp(path, "-") == 0) {
+      // By convention, read from stdin if a given filename is "-".
+      fp = stdin;
+    } else {
+      fp = fopen(path, "r");
+      if (!fp)
+       fprintf(stderr, "cannot open %s\n", path);
+    }
+  
+    char *buf;
+    size_t buflen;
+    FILE *out = open_memstream(&buf, &buflen);
+  
+    // Read the entire file.
+    for (;;) {
+      char buf2[4096];
+      int n = fread(buf2, 1, sizeof(buf2), fp);
+      if (n == 0)
+        break;
+      fwrite(buf2, 1, n, out);
+    }
+  
+    if (fp != stdin)
+      fclose(fp);
+  
+    // Make sure that the last line is properly terminated with '\n'.
+    fflush(out);
+    if (buflen == 0 || buf[buflen - 1] != '\n')
+      fputc('\n', out);
+    fputc('\0', out);
+    fclose(out);
+    return buf;
+  }
