@@ -9,6 +9,9 @@ $(SRC):mini.h
 test: miniCcompiler
 	./test.sh
 
+filetest: miniCcompiler
+	./filetest.sh
+
 miniCcompiler_d: $(SRC)
 	gcc -g -o $@ $^
 

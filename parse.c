@@ -341,6 +341,7 @@ static ASTnode* block(Token **tok_addr){
     return new_blocknode(head.next);
 }
 
+
 //sentence = ";" | "return" ";" | "return" assgin ";"| assgin ";" | block 
 //          | "if" "(" equation ")" sentence ("else" sentence)?
 //          | "for" "(" assgin ";" equation ";" assgin ")" sentence
