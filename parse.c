@@ -495,7 +495,11 @@ static ASTnode* assign(Token **tok_addr){
     if(tok->kind == TK_PUNCT && *tok->loc == '='){
         tok = tok->next;
         *tok_addr = tok;
-        return new_node(ND_ASSIGN, node, assign(tok_addr));//assgin is right-associative.
+        node=new_node(ND_ASSIGN, node, assign(tok_addr));//assgin is right-associative.
+        if(!type_equal(getNodeType(node->left),getNodeType(node->right))){
+            fprintf(stderr,"<%s>: type unmatch in assign",__func__);
+        }
+        return node;
     }
     return node;
 }
