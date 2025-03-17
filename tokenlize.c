@@ -56,10 +56,25 @@ Token* Tokenlize(char *path){
         }
         switch (*p)
         {
+        case '/': //arise this case to avoid fall through bug. such as recongnize "**"as a comment.
+            if(*(p+1) == '/'){
+                p+=2;
+                while(*p != '\n'){
+                    p++;
+                }
+                continue;
+            }
+            if(*(p+1) == '*'){
+                p+=2;
+                while(*p != '*' && *(p+1) != '/'){
+                    p++;
+                }
+                p+=2;
+                continue;
+            }
         case '+':
         case '-':
         case '*':
-        case '/':
         case '(':
         case ')':
         case ';':

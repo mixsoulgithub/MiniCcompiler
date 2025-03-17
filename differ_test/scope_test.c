@@ -6,7 +6,7 @@ int main() {
     }
     {
         int y = 10; 
-        if (*ptr == 10) { 
+        if (*ptr == 10) { //recycle of x makes ptr point to y.
             return 1;
         }
     }
